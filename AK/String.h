@@ -127,6 +127,8 @@ public:
         return (*m_impl)[i];
     }
 
+    void reverse() { return m_impl->reverse(); }
+
     bool starts_with(const StringView&) const;
     bool ends_with(const StringView&) const;
 

@@ -163,6 +163,10 @@ extern "C" {
 multiboot_info_t* multiboot_info_ptr;
 }
 
+#define BREAKPOINT() __asm__("int $3");
+extern void _stub_init_com2(int baud);
+extern void _stub_set_debug_traps();
+
 extern "C" [[noreturn]] void init()
 {
     // this is only used one time, directly below here. we can't use this part
@@ -223,6 +227,10 @@ extern "C" [[noreturn]] void init()
 
     MemoryManager::initialize();
     PIT::initialize();
+
+    _stub_init_com2(9600);
+    _stub_set_debug_traps();
+    BREAKPOINT();
 
     PCI::enumerate_all([](const PCI::Address& address, PCI::ID id) {
         kprintf("PCI device: bus=%d slot=%d function=%d id=%w:%w\n",

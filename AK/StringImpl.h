@@ -37,6 +37,8 @@ public:
         return characters()[i];
     }
 
+    void reverse();
+
     unsigned hash() const
     {
         if (!m_has_hash)

@@ -104,10 +104,10 @@ AK_OBJS = \
     ../AK/ELF/ELFLoader.o
 
 CXX_OBJS = $(KERNEL_OBJS) $(VFS_OBJS) $(AK_OBJS)
-OBJS = $(CXX_OBJS) Boot/boot.ao
+OBJS = $(CXX_OBJS) Arch/i386/gdb_stub.o Boot/boot.ao
 
 KERNEL = kernel
-CXXFLAGS += -ffreestanding -mregparm=3 -mno-80387 -mno-mmx -mno-sse -mno-sse2
+CXXFLAGS += -g -ffreestanding -mregparm=3 -mno-80387 -mno-mmx -mno-sse -mno-sse2
 CXXFLAGS += -nostdlib -nostdinc -nostdinc++
 CXXFLAGS += -I../Toolchain/Local/i686-pc-serenity/include/c++/8.3.0/
 CXXFLAGS += -I../Toolchain/Local/i686-pc-serenity/include/c++/8.3.0/i686-pc-serenity/

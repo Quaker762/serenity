@@ -172,4 +172,18 @@ void StringImpl::compute_hash() const
     m_has_hash = true;
 }
 
+void StringImpl::reverse()
+{
+    ASSERT(m_length > 0);
+
+    char* low   = &m_inline_buffer[0];
+    char* high  = &m_inline_buffer[m_length - 1];
+    while(low < high)
+    {
+        char tmp = *low;
+        *low++ = *high;
+        *high-- = tmp;
+    }
+}
+
 }
