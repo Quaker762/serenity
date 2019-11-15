@@ -94,6 +94,7 @@ private:
     void map_protected(VirtualAddress, size_t length);
 
     void create_identity_mapping(PageDirectory&, VirtualAddress, size_t length);
+    void create_mapping(PageDirectory&, PhysicalAddress, VirtualAddress, bool user, bool present, bool writable, size_t length);
 
     static Region* region_from_vaddr(Process&, VirtualAddress);
     static const Region* region_from_vaddr(const Process&, VirtualAddress);

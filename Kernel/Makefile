@@ -102,12 +102,12 @@ CXX_OBJS = \
 OBJS = $(CXX_OBJS) Arch/i386/Boot/boot.ao
 
 KERNEL = kernel
-CXXFLAGS += -ffreestanding -mno-80387 -mno-mmx -mno-sse -mno-sse2
+CXXFLAGS += -ffreestanding -mno-80387 -mno-mmx -mno-sse -mno-sse2 -g -ggdb
 CXXFLAGS += -nostdlib -nostdinc -nostdinc++
 CXXFLAGS += -I../Toolchain/Local/i686-pc-serenity/include/c++/8.3.0/
 CXXFLAGS += -I../Toolchain/Local/i686-pc-serenity/include/c++/8.3.0/i686-pc-serenity/
 DEFINES += -DKERNEL
-LDFLAGS += -Ttext 0x100000 -Wl,-T linker.ld -nostdlib
+LDFLAGS += -Wl,-T linker.ld -nostdlib
 
 all: $(KERNEL) kernel.map
 
@@ -127,4 +127,3 @@ $(KERNEL): $(OBJS)
 
 clean:
 	@echo "CLEAN"; rm -f $(KERNEL) $(OBJS) *.d
-

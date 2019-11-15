@@ -21,7 +21,7 @@ public:
 
     ~PageDirectory();
 
-    u32 cr3() const { return m_directory_page->paddr().get(); }
+    u32 cr3() const { return m_directory_page->paddr().get() - 0xc0000000; }
     PageDirectoryEntry* entries() { return reinterpret_cast<PageDirectoryEntry*>(cr3()); }
 
     void flush(VirtualAddress);

@@ -57,14 +57,15 @@ void MemoryManager::initialize_paging()
     dbgprintf("MM: Protect against null dereferences\n");
 #endif
     // Make null dereferences crash.
-    map_protected(VirtualAddress(0), PAGE_SIZE);
+    //map_protected(VirtualAddress(0), PAGE_SIZE);
 
 #ifdef MM_DEBUG
     dbgprintf("MM: Identity map bottom 8MB\n");
 #endif
     // The bottom 8 MB (except for the null page) are identity mapped & supervisor only.
     // Every process shares these mappings.
-    create_identity_mapping(kernel_page_directory(), VirtualAddress(PAGE_SIZE), (8 * MB) - PAGE_SIZE);
+    //create_identity_mapping(kernel_page_directory(), VirtualAddress(PAGE_SIZE), (8 * MB) - PAGE_SIZE);
+    create_mapping(kernel_page_directory(), PhysicalAddress(0), VirtualAddress(0xc0000000), false, true, true, 8 * MB); // Only map the kernel
 
     // FIXME: We should move everything kernel-related above the 0xc0000000 virtual mark.
 
@@ -192,16 +193,16 @@ PageTableEntry& MemoryManager::ensure_pte(PageDirectory& page_directory, Virtual
 #ifdef MM_DEBUG
         dbgprintf("MM: PDE %u not present (requested for V%p), allocating\n", page_directory_index, vaddr.get());
 #endif
-        if (page_directory_index == 0) {
+        if (/**page_directory_index == 0 || **/page_directory_index == 768) {
             ASSERT(&page_directory == m_kernel_page_directory);
-            pde.set_page_table_base((u32)m_page_table_zero);
+            pde.set_page_table_base((u32)m_page_table_zero - 0xc0000000);
             pde.set_user_allowed(false);
             pde.set_present(true);
             pde.set_writable(true);
             pde.set_global(true);
-        } else if (page_directory_index == 1) {
+        } else if (/**page_directory_index == 1 || **/page_directory_index == 769) {
             ASSERT(&page_directory == m_kernel_page_directory);
-            pde.set_page_table_base((u32)m_page_table_one);
+            pde.set_page_table_base((u32)m_page_table_one - 0xc0000000);
             pde.set_user_allowed(false);
             pde.set_present(true);
             pde.set_writable(true);
@@ -256,6 +257,23 @@ void MemoryManager::create_identity_mapping(PageDirectory& page_directory, Virtu
         pte.set_user_allowed(false);
         pte.set_present(true);
         pte.set_writable(true);
+        page_directory.flush(pte_address);
+    }
+}
+
+void MemoryManager::create_mapping(PageDirectory& page_directory, PhysicalAddress paddr, VirtualAddress vaddr, bool user, bool present, bool writable, size_t length)
+{
+    InterruptDisabler disabler;
+    ASSERT((paddr.get() & ~PAGE_MASK) == 0);
+    ASSERT((vaddr.get() & ~PAGE_MASK) == 0);
+    for(u32 offset = 0; offset < length; offset += PAGE_SIZE)
+    {
+        auto pte_address = vaddr.offset(offset);
+        auto& pte = ensure_pte(page_directory, pte_address);
+        pte.set_physical_page_base(paddr.offset(offset).get());
+        pte.set_user_allowed(user);
+        pte.set_present(present);
+        pte.set_writable(writable);
         page_directory.flush(pte_address);
     }
 }
