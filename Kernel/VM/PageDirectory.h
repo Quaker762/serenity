@@ -22,7 +22,7 @@ public:
     ~PageDirectory();
 
     u32 cr3() const { return m_directory_table->paddr().get(); }
-    PageDirectoryPointerTable& table() { return *reinterpret_cast<PageDirectoryPointerTable*>(cr3()); }
+    PageDirectoryPointerTable& table() { return *reinterpret_cast<PageDirectoryPointerTable*>(cr3() + kernel_virtual_base); }
 
     void flush(VirtualAddress);
 

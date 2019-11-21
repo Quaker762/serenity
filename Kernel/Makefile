@@ -107,7 +107,13 @@ MODULE_OBJS = TestModule.o
 
 EXTRA_OBJS = Arch/i386/Boot/boot.ao
 
-KERNEL = 1
+KERNEL = kernel
+CXXFLAGS += -ffreestanding -mno-80387 -mno-mmx -mno-sse -mno-sse2 -fno-asynchronous-unwind-tables
+CXXFLAGS += -nostdlib -nostdinc -nostdinc++
+CXXFLAGS += -I../Toolchain/Local/i686-pc-serenity/include/c++/9.2.0/
+CXXFLAGS += -I../Toolchain/Local/i686-pc-serenity/include/c++/9.2.0/i686-pc-serenity/
+DEFINES += -DKERNEL
+LDFLAGS += -Wl,-T linker.ld -nostdlib
 
 PROGRAM = kernel
 

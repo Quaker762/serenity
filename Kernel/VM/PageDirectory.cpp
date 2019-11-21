@@ -22,7 +22,7 @@ RefPtr<PageDirectory> PageDirectory::find_by_cr3(u32 cr3)
 }
 
 PageDirectory::PageDirectory(PhysicalAddress paddr)
-    : m_range_allocator(VirtualAddress(0xc0000000), 0x3f000000)
+    : m_range_allocator(VirtualAddress(kernelspace_range_base + 0x800000), 0x3f000000)
 {
     m_directory_table = PhysicalPage::create(paddr, true, false);
     m_directory_pages[0] = PhysicalPage::create(paddr.offset(PAGE_SIZE * 1), true, false);

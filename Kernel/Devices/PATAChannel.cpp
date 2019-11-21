@@ -252,17 +252,16 @@ bool PATAChannel::ata_read_sectors_with_dma(u32 lba, u16 count, u8* outbuf, bool
         current->process().name().characters(),
         current->pid(), lba, count, outbuf);
 #endif
+    prdt().offset = m_dma_buffer_page->paddr();
+    prdt().size = 512 * count;
 
-    m_prdt.offset = m_dma_buffer_page->paddr();
-    m_prdt.size = 512 * count;
-
-    ASSERT(m_prdt.size <= PAGE_SIZE);
+    ASSERT(prdt().size <= PAGE_SIZE);
 
     // Stop bus master
     IO::out8(m_bus_master_base, 0);
 
     // Write the PRDT location
-    IO::out32(m_bus_master_base + 4, (u32)&m_prdt);
+    IO::out32(m_bus_master_base + 4, (u32)&prdt());
 
     // Turn on "Interrupt" and "Error" flag. The error flag should be cleared by hardware.
     IO::out8(m_bus_master_base + 2, IO::in8(m_bus_master_base + 2) | 0x6);
@@ -326,18 +325,18 @@ bool PATAChannel::ata_write_sectors_with_dma(u32 lba, u16 count, const u8* inbuf
         current->pid(), lba, count, inbuf);
 #endif
 
-    m_prdt.offset = m_dma_buffer_page->paddr();
-    m_prdt.size = 512 * count;
+    prdt().offset = m_dma_buffer_page->paddr();
+    prdt().size = 512 * count;
 
     memcpy(m_dma_buffer_page->paddr().as_ptr(), inbuf, 512 * count);
 
-    ASSERT(m_prdt.size <= PAGE_SIZE);
+    ASSERT(prdt().size <= PAGE_SIZE);
 
     // Stop bus master
     IO::out8(m_bus_master_base, 0);
 
     // Write the PRDT location
-    IO::out32(m_bus_master_base + 4, (u32)&m_prdt);
+    IO::out32(m_bus_master_base + 4, (u32)&prdt());
 
     // Turn on "Interrupt" and "Error" flag. The error flag should be cleared by hardware.
     IO::out8(m_bus_master_base + 2, IO::in8(m_bus_master_base + 2) | 0x6);

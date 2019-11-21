@@ -8,6 +8,8 @@
 #define PAGE_SIZE 4096
 #define PAGE_MASK 0xfffff000
 
+static const u32 kernel_virtual_base = 0xc0000000;
+
 class MemoryManager;
 class PageDirectory;
 class PageTableEntry;
@@ -88,6 +90,7 @@ union [[gnu::packed]] Descriptor
 class PageDirectoryEntry {
 public:
     PageTableEntry* page_table_base() { return reinterpret_cast<PageTableEntry*>(m_raw & 0xfffff000u); }
+    PageTableEntry* page_table_virtual_base() { return reinterpret_cast<PageTableEntry*>((m_raw + kernel_virtual_base) & 0xfffff000u); }
     void set_page_table_base(u32 value)
     {
         m_raw &= 0x8000000000000fffULL;
