@@ -115,7 +115,8 @@ private:
 
     RefPtr<PageDirectory> m_kernel_page_directory;
     PageTableEntry* m_page_table_zero { nullptr };
-    PageTableEntry* m_page_table_one { nullptr };
+    PageTableEntry* m_page_table_768 { nullptr };
+    PageTableEntry* m_page_table_769 { nullptr };
 
     VirtualAddress m_quickmap_addr;
 
