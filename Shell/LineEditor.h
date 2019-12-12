@@ -19,13 +19,15 @@ public:
 private:
     void clear_line();
     void append(const String&);
-    void tab_complete_first_token();
+    void print_whole_path();
+    void tab_complete_first_token(const String& prompt);
     void vt_save_cursor();
     void vt_restore_cursor();
     void vt_clear_to_end_of_line();
 
     Vector<char, 1024> m_buffer;
     int m_cursor { 0 };
+    int m_times_tab_pressed { 0 };
 
     // FIXME: This should be something more take_first()-friendly.
     Vector<String> m_history;

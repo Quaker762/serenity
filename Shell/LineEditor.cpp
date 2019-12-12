@@ -37,16 +37,54 @@ void LineEditor::append(const String& string)
     m_cursor = m_buffer.size();
 }
 
-void LineEditor::tab_complete_first_token()
+void LineEditor::print_whole_path()
+{
+    int count = 0;
+    String path = getenv("PATH");
+    if (path.is_empty())
+        return;
+    auto directories = path.split(':');
+
+    putchar('\n');
+    // Go through the files in PATH.
+    for (const auto& directory : directories) {
+        CDirIterator programs(directory.characters(), CDirIterator::SkipDots);
+        while (programs.has_next()) {
+            String program = programs.next_path();
+
+            // Check that the file is an executable program.
+            struct stat program_status;
+            StringBuilder program_path;
+            program_path.append(directory.characters());
+            program_path.append('/');
+            program_path.append(program.characters());
+            int stat_error = stat(program_path.to_string().characters(), &program_status);
+            if (stat_error || !(program_status.st_mode & S_IXUSR))
+                continue;
+
+            if ((count % 3) == 0)
+                putchar('\n');
+
+            printf("%-20s", program.characters());
+            count++;
+        }
+    }
+
+    putchar('\n');
+}
+
+void LineEditor::tab_complete_first_token(const String& prompt)
 {
     auto input = String::copy(m_buffer);
 
     String path = getenv("PATH");
     if (path.is_empty())
         return;
+
     auto directories = path.split(':');
 
     String match;
+    Vector<String> matches;
 
     // Go through the files in PATH.
     for (const auto& directory : directories) {
@@ -55,6 +93,8 @@ void LineEditor::tab_complete_first_token()
             String program = programs.next_path();
             if (!program.starts_with(input))
                 continue;
+
+            matches.append(program);
 
             // Check that the file is an executable program.
             struct stat program_status;
@@ -75,16 +115,36 @@ void LineEditor::tab_complete_first_token()
                 int i = input.length();
                 while (i < match.length() && i < program.length() && match[i] == program[i])
                     ++i;
+
                 match = match.substring(0, i);
             }
 
-            if (match.length() == input.length())
-                return;
+            //if (match.length() == input.length())
+            //return;
         }
     }
 
-    if (match.is_empty())
+    // We didn't actually find a match, so let's inform the user of the
+    // possible choices they have
+    if (match.is_empty() || match.length() == input.length()) {
+        if (m_times_tab_pressed > 1) {
+            int count = 0;
+            for (String str : matches) {
+                if ((count++ % 3) == 0)
+                    putchar('\n');
+
+                printf("%-20s", str.characters());
+            }
+
+            putchar('\n');
+            fputs(prompt.characters(), stdout);
+            fputs(input.characters(), stdout);
+            fflush(stdout);
+        }
+
+        matches.clear();
         return;
+    }
 
     // Then append `match` to the buffer, excluding the `input` part which is
     // already in the buffer.
@@ -228,6 +288,12 @@ String LineEditor::get_line(const String& prompt)
             }
 
             if (ch == '\t') {
+                m_times_tab_pressed++;
+                if (m_times_tab_pressed > 1 && m_buffer.is_empty()) {
+                    print_whole_path();
+                    return "";
+                }
+
                 if (m_buffer.is_empty())
                     continue;
 
@@ -241,10 +307,12 @@ String LineEditor::get_line(const String& prompt)
 
                 // FIXME: Implement tab-completion for other tokens (paths).
                 if (is_first_token)
-                    tab_complete_first_token();
+                    tab_complete_first_token(prompt);
 
                 continue;
             }
+
+            m_times_tab_pressed = 0; // If we get here, it's clear that TAB hasn't been pressed, so we can just reset this
 
             auto do_backspace = [&] {
                 if (m_cursor == 0) {
@@ -284,7 +352,7 @@ String LineEditor::get_line(const String& prompt)
                     do_backspace();
                 continue;
             }
-            if (ch == 0xc) { // ^L
+            if (ch == 0xc) {                    // ^L
                 printf("\033[3J\033[H\033[2J"); // Clear screen.
                 fputs(prompt.characters(), stdout);
                 for (int i = 0; i < m_buffer.size(); ++i)
