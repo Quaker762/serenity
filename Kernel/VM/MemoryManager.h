@@ -97,6 +97,7 @@ private:
     void map_protected(VirtualAddress, size_t length);
 
     void create_identity_mapping(PageDirectory&, VirtualAddress, size_t length);
+    void create_mapping(PageDirectory&, PhysicalAddress, VirtualAddress, size_t length);
 
     static Region* user_region_from_vaddr(Process&, VirtualAddress);
     static Region* kernel_region_from_vaddr(VirtualAddress);
@@ -115,6 +116,7 @@ private:
 
     RefPtr<PageDirectory> m_kernel_page_directory;
     PageTableEntry* m_low_page_tables[4] { nullptr };
+    PageTableEntry* m_high_page_tables[4] { nullptr };
 
     VirtualAddress m_quickmap_addr;
 

@@ -131,7 +131,7 @@ void PATAChannel::initialize(bool force_pio)
 
     // Let's try to set up DMA transfers.
     PCI::enable_bus_mastering(m_pci_address);
-    m_prdt.end_of_table = 0x8000;
+    prdt().end_of_table = 0x8000;
     m_bus_master_base = PCI::get_BAR4(m_pci_address) & 0xfffc;
     m_dma_buffer_page = MM.allocate_supervisor_physical_page();
     kprintf("PATAChannel: Bus master IDE: I/O @ %x\n", m_bus_master_base);

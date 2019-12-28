@@ -27,10 +27,17 @@ MemoryManager::MemoryManager(u32 physical_address_for_kernel_page_tables)
     m_has_nx_support = (id.edx() & (1 << 20)) != 0;
 
     m_kernel_page_directory = PageDirectory::create_at_fixed_address(PhysicalAddress(physical_address_for_kernel_page_tables));
-    //for (size_t i = 0; i < 4; ++i) {
-    //    m_low_page_tables[i] = (PageTableEntry*)(physical_address_for_kernel_page_tables + PAGE_SIZE * (5 + i));
-    //    memset(m_low_page_tables[i], 0, PAGE_SIZE);
-    //}
+    for (size_t i = 0; i < 4; ++i) {
+        m_low_page_tables[i] = (PageTableEntry*)(physical_address_for_kernel_page_tables + PAGE_SIZE * (5 + i));
+        memset(m_low_page_tables[i], 0, PAGE_SIZE);
+    }
+
+    for(size_t i = 0; i < 4; ++i)
+    {
+        m_high_page_tables[i] = (PageTableEntry*)(physical_address_for_kernel_page_tables + PAGE_SIZE * (9 + i));
+        kprintf("m_high_page_tables[%d] = %p\n", i, m_high_page_tables[i]);
+        memset(m_high_page_tables[i], 0, PAGE_SIZE);
+    }
 
     initialize_paging();
 
@@ -58,7 +65,7 @@ void MemoryManager::initialize_paging()
 #endif
     // The bottom 8 MB (except for the null page) are identity mapped & supervisor only.
     // Every process shares these mappings.
-    create_identity_mapping(kernel_page_directory(), VirtualAddress(PAGE_SIZE), (8 * MB) - PAGE_SIZE);
+    create_identity_mapping(kernel_page_directory(), VirtualAddress(PAGE_SIZE), (1 * MB) - PAGE_SIZE);
 
     // Disable execution from 0MB through 1MB (BIOS data, legacy things, ...)
     for (size_t i = 0; i < (1 * MB); ++i) {
@@ -215,6 +222,13 @@ PageTableEntry& MemoryManager::ensure_pte(PageDirectory& page_directory, Virtual
         if (page_directory_table_index == 0 && page_directory_index < 4) {
             ASSERT(&page_directory == m_kernel_page_directory);
             pde.set_page_table_base((u32)m_low_page_tables[page_directory_index]);
+            pde.set_user_allowed(false);
+            pde.set_present(true);
+            pde.set_writable(true);
+            pde.set_global(true);
+        } else if (page_directory_table_index == 3 && page_directory_index < 4){
+            ASSERT(&page_directory == m_kernel_page_directory);
+            pde.set_page_table_base((u32)m_high_page_tables[page_directory_index]);
             pde.set_user_allowed(false);
             pde.set_present(true);
             pde.set_writable(true);

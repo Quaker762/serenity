@@ -33,8 +33,17 @@ stack_top:
 
 .section .page_tables
 .align 4096
+# The layout of this is as follows (it's a bit different because we enable PAE in MemoryManager.cpp)
+#   Index 0 is the PDPT (which contains pointers to 4 _Page Directories(!)_)
+#   Index 1-4 (inclusive) are the page directories
+#   Index 5-8 (inclusive) are the low page tables
 page_tables_start:
 .skip 4096*9
+
+# These are our "high" page tables for the 0xc0000000 address space
+.align 4096
+kernel_page_tables:
+.skip 4096*4
 
 .section .text.boot
 
