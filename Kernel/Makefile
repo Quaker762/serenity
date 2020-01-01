@@ -42,6 +42,7 @@ OBJS = \
     FileSystem/DevPtsFS.o \
     FileSystem/DiskBackedFileSystem.o \
     FileSystem/Ext2FileSystem.o \
+    FileSystem/FATFileSystem.o \
     FileSystem/FIFO.o \
     FileSystem/File.o \
     FileSystem/FileDescription.o \
