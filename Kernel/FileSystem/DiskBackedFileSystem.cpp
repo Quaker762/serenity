@@ -24,7 +24,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/Devices/BlockDevice.h>
 #include <Kernel/FileSystem/DiskBackedFileSystem.h>
 #include <Kernel/FileSystem/FileDescription.h>

@@ -27,7 +27,11 @@
 #include "CMOS.h"
 #include "Process.h"
 #include <AK/Assertions.h>
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/FileSystem/Inode.h>
 #include <Kernel/Multiboot.h>
 #include <Kernel/VM/AnonymousVMObject.h>

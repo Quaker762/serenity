@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Liav A. <liavalb@hotmail.co.il>
+ * Copyright (c) 2020, Jesse Buhagiar <jooster669@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,45 +23,23 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #pragma once
 
-#include <AK/HashTable.h>
-#include <AK/NonnullOwnPtr.h>
-#include <AK/RefPtr.h>
-#include <AK/Types.h>
-#if defined i686
-#    include <Kernel/Arch/i386/CPU.h>
-#elif defined x86_64
-#    include <Kernel/Arch/x86_64/CPU.h>
-#endif
-#include <Kernel/Interrupts/GenericInterruptHandler.h>
+#include <AK/Badge.h>
+#include <AK/Noncopyable.h>
+#include <LibBareMetal/Memory/PhysicalAddress.h>
+#include <LibBareMetal/Memory/VirtualAddress.h>
 
-namespace Kernel {
-class IRQHandler;
-class SharedIRQHandler final : public GenericInterruptHandler {
-public:
-    static void initialize(u8 interrupt_number);
-    virtual ~SharedIRQHandler();
-    virtual void handle_interrupt(RegisterState& regs) override;
-
-    void register_handler(GenericInterruptHandler&);
-    void unregister_handler(GenericInterruptHandler&);
-
-    virtual bool eoi() override;
-
-    virtual size_t sharing_devices_count() const override { return m_handlers.size(); }
-    virtual bool is_shared_handler() const override { return true; }
-    virtual bool is_sharing_with_others() const override { return false; }
-
-    virtual HandlerPurpose purpose() const override { return HandlerPurpose::SharedIRQHandler; }
-
-private:
-    void enable_interrupt_vector();
-    void disable_interrupt_vector();
-    explicit SharedIRQHandler(u8 interrupt_number);
-    bool m_enabled;
-    HashTable<GenericInterruptHandler*> m_handlers;
-    RefPtr<IRQController> m_responsible_irq_controller;
+union [[gnu::packed]] Descriptor
+{
+    // Page 88 of the AMD x86_64 reference manual, Volume 2
+    // Almost ALL of these fields are unused by the processor.
+    // C, DPL, P, L, and D are used, however.
+    struct
+    {
+        u16 : 16;
+        u16 : 16;
+        u8 : 8;
+        u8 : 1;
+    };
 };
-}

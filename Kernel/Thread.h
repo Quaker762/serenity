@@ -32,7 +32,11 @@
 #include <AK/OwnPtr.h>
 #include <AK/String.h>
 #include <AK/Vector.h>
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/Forward.h>
 #include <Kernel/KResult.h>
 #include <Kernel/Scheduler.h>

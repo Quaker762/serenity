@@ -32,7 +32,11 @@
 #include <AK/JsonObject.h>
 #include <AK/JsonObjectSerializer.h>
 #include <AK/JsonValue.h>
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/Devices/BlockDevice.h>
 #include <Kernel/FileSystem/Custody.h>
 #include <Kernel/FileSystem/DiskBackedFileSystem.h>
@@ -329,7 +333,6 @@ Optional<KBuffer> procfs$pid_vm(InodeIdentifier identifier)
                 pagemap_builder.append('P');
         }
         region_object.add("pagemap", pagemap_builder.to_string());
-
     }
     array.finish();
     return builder.build();

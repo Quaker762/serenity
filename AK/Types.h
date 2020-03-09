@@ -30,6 +30,7 @@
 #include <AK/Platform.h>
 
 #ifdef __serenity__
+#    if defined i686 // Regular x86/i386/i686 specific types
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -68,6 +69,46 @@ typedef i8 int8_t;
 typedef i16 int16_t;
 typedef i32 int32_t;
 typedef i64 int64_t;
+#    elif defined x86_64 //x86_64 platform specific types
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long long int u64;
+static_assert(sizeof(u8) == 1);
+static_assert(sizeof(u16) == 2);
+static_assert(sizeof(u32) == 4);
+static_assert(sizeof(u64) == 8);
+
+typedef signed char i8;
+typedef signed short i16;
+typedef signed int i32;
+typedef signed long long int i64;
+static_assert(sizeof(i8) == 1);
+static_assert(sizeof(i16) == 2);
+static_assert(sizeof(i32) == 4);
+static_assert(sizeof(i64) == 8);
+
+typedef __SIZE_TYPE__ size_t;
+typedef i64 ssize_t;
+
+static_assert(sizeof(size_t) == sizeof(u64));
+static_assert(sizeof(ssize_t) == sizeof(i64));
+
+typedef __PTRDIFF_TYPE__ ptrdiff_t;
+
+typedef __INTPTR_TYPE__ intptr_t;
+typedef __UINTPTR_TYPE__ uintptr_t;
+
+typedef u8 uint8_t;
+typedef u16 uint16_t;
+typedef u32 uint32_t;
+typedef u64 uint64_t;
+
+typedef i8 int8_t;
+typedef i16 int16_t;
+typedef i32 int32_t;
+typedef i64 int64_t;
+#    endif
 
 #else
 #    include <stdint.h>
@@ -83,9 +124,9 @@ typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
 
-#ifdef __ptrdiff_t
+#    ifdef __ptrdiff_t
 typedef __PTRDIFF_TYPE__ __ptrdiff_t;
-#endif
+#    endif
 
 #endif
 
@@ -112,4 +153,6 @@ inline constexpr size_t align_up_to(const size_t value, const size_t alignment)
     return (value + (alignment - 1)) & ~(alignment - 1);
 }
 
-enum class TriState : u8 { False, True, Unknown };
+enum class TriState : u8 { False,
+    True,
+    Unknown };

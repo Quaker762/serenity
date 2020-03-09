@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Liav A. <liavalb@hotmail.co.il>
+ * Copyright (c) 2020, Jesse Buhagiar <jooster669@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,41 +23,3 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#pragma once
-
-#include <AK/Types.h>
-#if defined i686
-#    include <Kernel/Arch/i386/CPU.h>
-#elif defined x86_64
-#    include <Kernel/Arch/x86_64/CPU.h>
-#endif
-#include <Kernel/Interrupts/GenericInterruptHandler.h>
-#include <Kernel/PCI/Definitions.h>
-
-namespace Kernel {
-
-class MSIHandler : public GenericInterruptHandler {
-public:
-    virtual ~MSIHandler();
-
-    virtual void handle_interrupt(RegisterState&) override {}
-
-    void enable_irq();
-    void disable_irq();
-
-    virtual bool eoi() override;
-
-    virtual size_t sharing_devices_count() const override { return 0; }
-    virtual bool is_shared_handler() const override { return false; }
-    virtual bool is_sharing_with_others() const override { return m_shared_with_others; }
-
-protected:
-    void change_irq_number(u8 irq);
-    explicit MSIHandler(PCI::Address);
-
-private:
-    bool m_shared_with_others;
-    bool m_enabled;
-};
-}

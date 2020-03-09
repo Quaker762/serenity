@@ -42,17 +42,17 @@ ifneq ($(USE_HOST_CXX),)
     OBJ_SUFFIX ?= .host
     ARCH = $(shell arch -s)
 else
-    TOOLCHAIN_PATH = $(SERENITY_BASE_DIR)/Toolchain/Local/bin
-    CXX = $(PRE_CXX) $(TOOLCHAIN_PATH)/i686-pc-serenity-g++
-    CC = $(PRE_CC) $(TOOLCHAIN_PATH)/i686-pc-serenity-gcc
-    AS = $(TOOLCHAIN_PATH)/i686-pc-serenity-as
-    LINK = $(TOOLCHAIN_PATH)/i686-pc-serenity-ld
-    RANLIB = $(TOOLCHAIN_PATH)/i686-pc-serenity-ranlib
-    AR = $(TOOLCHAIN_PATH)/i686-pc-serenity-ar
+    TOOLCHAIN_PATH = $(SERENITY_BASE_DIR)/Toolchain/Local/x86_64/bin
+    CXX = $(PRE_CXX) $(TOOLCHAIN_PATH)/x86_64-pc-serenity-g++
+    CC = $(PRE_CC) $(TOOLCHAIN_PATH)/x86_64-pc-serenity-gcc
+    AS = $(TOOLCHAIN_PATH)/x86_64-pc-serenity-as
+    LINK = $(TOOLCHAIN_PATH)/x86_64-pc-serenity-ld
+    RANLIB = $(TOOLCHAIN_PATH)/x86_64-pc-serenity-ranlib
+    AR = $(TOOLCHAIN_PATH)/x86_64-pc-serenity-ar
     ARCH = i386
 
     DEFINES += -DDEBUG
-    DEFINES += -Di686
+    DEFINES += -Dx86_64
 
     INCLUDE_FLAGS += \
     	-I$(SERENITY_BASE_DIR)/Libraries/LibC \
@@ -81,7 +81,7 @@ else
 endif
 
 #CXX = clang $(CLANG_FLAGS)
-#CLANG_FLAGS = -Wconsumed -m32 -ffreestanding -march=i686
+#CLANG_FLAGS = -Wconsumed -m32 -ffreestanding -march=x86_64
 
 CXXFLAGS = -MMD -MP $(CXX_WARNING_FLAGS) $(OPTIMIZATION_FLAGS) $(CXX_FLAVOR_FLAGS) $(ARCH_FLAGS) $(CXX_STANDARD_FLAGS) $(CXX_SUGGEST_FLAGS) $(INCLUDE_FLAGS) $(DEFINES) $(SUBPROJECT_CXXFLAGS)
 CFLAGS = -MMD -MP $(C_FLAVOR_FLAGS) $(ARCH_FLAGS) $(C_STANDARD_FLAGS) $(C_SUGGEST_FLAGS) $(INCLUDE_FLAGS) $(DEFINES) $(SUBPROJECT_CXXFLAGS)

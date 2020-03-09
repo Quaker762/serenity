@@ -44,7 +44,11 @@ AK::String copy_string_from_user(const char*, size_t);
 
 extern "C" {
 
+#if defined i686
 static_assert(sizeof(size_t) == 4);
+#elif defined x86_64
+static_assert(sizeof(size_t) == 8);
+#endif
 
 #if defined(KERNEL)
 void copy_to_user(void*, const void*, size_t);

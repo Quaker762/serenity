@@ -34,7 +34,11 @@
 #include <Kernel/ACPI/ACPIStaticParser.h>
 #include <Kernel/ACPI/DMIDecoder.h>
 #include <Kernel/ACPI/MultiProcessorParser.h>
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/CMOS.h>
 #include <Kernel/Devices/BXVGADevice.h>
 #include <Kernel/Devices/DebugLogDevice.h>

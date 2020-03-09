@@ -29,7 +29,11 @@
 #include <AK/RefPtr.h>
 #include <AK/String.h>
 #include <AK/Types.h>
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/Interrupts/GenericInterruptHandler.h>
 #include <Kernel/Interrupts/IRQController.h>
 

@@ -31,7 +31,11 @@
 #include <AK/StringBuilder.h>
 #include <AK/Time.h>
 #include <AK/Types.h>
-#include <Kernel/Arch/i386/CPU.h>
+#if defined i686
+#    include <Kernel/Arch/i386/CPU.h>
+#elif defined x86_64
+#    include <Kernel/Arch/x86_64/CPU.h>
+#endif
 #include <Kernel/Devices/BlockDevice.h>
 #include <Kernel/Devices/KeyboardDevice.h>
 #include <Kernel/Devices/NullDevice.h>
