@@ -1,0 +1,4 @@
+endpoint DiagnosticClient = 118
+{
+    Dummy() =|
+}

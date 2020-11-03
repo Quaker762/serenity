@@ -1,0 +1,8 @@
+endpoint DiagnosticServer = 117
+{
+    // Basic protocol
+    Greet() => (i32 client_id)
+
+    PresentDialog(i32 pid) =|
+
+}

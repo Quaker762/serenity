@@ -106,6 +106,7 @@ AboutDialog::AboutDialog(const StringView& name, const Gfx::Bitmap* icon, Window
     ok_button.set_size_policy(SizePolicy::Fixed, SizePolicy::Fixed);
     ok_button.set_preferred_size(80, 23);
     ok_button.on_click = [this](auto) {
+        while (1) { }
         done(Dialog::ExecOK);
     };
 }

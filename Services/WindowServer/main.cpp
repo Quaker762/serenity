@@ -49,8 +49,8 @@ int main(int, char**)
         return 1;
     }
 
-    if (unveil("/tmp", "cw") < 0) {
-        perror("unveil /tmp cw");
+    if (unveil("/tmp", "rwc") < 0) {
+        perror("unveil /tmp rwc ");
         return 1;
     }
 
@@ -84,7 +84,7 @@ int main(int, char**)
 
     WindowServer::EventLoop loop;
 
-    if (pledge("stdio video thread shared_buffer accept rpath wpath cpath proc", nullptr) < 0) {
+    if (pledge("stdio video thread shared_buffer accept rpath wpath cpath proc unix", nullptr) < 0) {
         perror("pledge");
         return 1;
     }
@@ -96,8 +96,8 @@ int main(int, char**)
     auto am = WindowServer::AppletManager::construct();
     auto mm = WindowServer::MenuManager::construct();
 
-    if (unveil("/tmp", "") < 0) {
-        perror("unveil /tmp");
+    if (unveil("/tmp", "rw") < 0) {
+        perror("unveil /tmp rw");
         return 1;
     }
 

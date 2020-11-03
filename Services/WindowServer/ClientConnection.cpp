@@ -26,8 +26,12 @@
 
 #include <AK/Badge.h>
 #include <AK/SharedBuffer.h>
+#include <DiagnosticServer/DiagnosticClientEndpoint.h>
+#include <DiagnosticServer/DiagnosticServerEndpoint.h>
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/SystemTheme.h>
+#include <LibIPC/ServerConnection.h>
+#include <LibThread/Thread.h>
 #include <WindowServer/AppletManager.h>
 #include <WindowServer/ClientConnection.h>
 #include <WindowServer/Compositor.h>
@@ -46,7 +50,28 @@
 
 namespace WindowServer {
 
+class DiagnosticServerConnection : public IPC::ServerConnection<DiagnosticClientEndpoint, DiagnosticServerEndpoint>
+    , public DiagnosticClientEndpoint {
+    C_OBJECT(DiagnosticServerConnection)
+public:
+    virtual void handshake() override
+    {
+        auto response = send_sync<Messages::DiagnosticServer::Greet>();
+        set_my_client_id(response->client_id());
+    }
+
+private:
+    DiagnosticServerConnection()
+        : IPC::ServerConnection<DiagnosticClientEndpoint, DiagnosticServerEndpoint>(*this, "/tmp/portal/procdoc")
+    {
+    }
+
+    virtual void handle(const Messages::DiagnosticClient::Dummy&) override { dbg() << "DUMMY!"; }
+};
+
 HashMap<int, NonnullRefPtr<ClientConnection>>* s_connections;
+OwnPtr<LibThread::Thread> s_procdoc_thread;
+DiagnosticServerConnection* s_procdoc_connection;
 
 static Gfx::IntRect normalize_window_rect(Gfx::IntRect rect, WindowType window_type)
 {
@@ -81,6 +106,7 @@ ClientConnection::ClientConnection(NonnullRefPtr<Core::LocalSocket> client_socke
 {
     if (!s_connections)
         s_connections = new HashMap<int, NonnullRefPtr<ClientConnection>>;
+
     s_connections->set(client_id, *this);
 }
 
@@ -880,9 +906,24 @@ void ClientConnection::set_unresponsive(bool unresponsive)
     for (auto& it : m_windows) {
         auto& window = *it.value;
         window.invalidate();
-        if (unresponsive)
+        if (unresponsive) {
             window.set_cursor(WindowManager::the().wait_cursor());
+
+            s_procdoc_thread = new LibThread::Thread([&] {
+                if (!s_procdoc_connection)
+                    s_procdoc_connection = &DiagnosticServerConnection::construct().leak_ref();
+
+                // Now that we've got a connection to the server, let's send it the offending PID and show a dialog
+                // with some options that might be helpful to the user (they can decide for themselves if something
+                // is amiss with their program)
+                s_procdoc_connection->post_message(Messages::DiagnosticServer::PresentDialog(this->client_pid()));
+
+                return 0;
+            });
+            s_procdoc_thread->start();
+        }
     }
+
     Compositor::the().invalidate_cursor();
 }
 
@@ -898,5 +939,4 @@ void ClientConnection::did_become_responsive()
 {
     set_unresponsive(false);
 }
-
 }
