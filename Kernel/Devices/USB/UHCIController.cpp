@@ -9,6 +9,7 @@
 #include <Kernel/CommandLine.h>
 #include <Kernel/Debug.h>
 #include <Kernel/Devices/USB/UHCIController.h>
+#include <Kernel/Devices/USB/USBRequest.h>
 #include <Kernel/Process.h>
 #include <Kernel/StdLib.h>
 #include <Kernel/Time/TimeManagement.h>
@@ -17,6 +18,7 @@
 
 static constexpr u8 MAXIMUM_NUMBER_OF_TDS = 128; // Upper pool limit. This consumes the second page we have allocated
 static constexpr u8 MAXIMUM_NUMBER_OF_QHS = 64;
+static constexpr u8 RETRY_COUNTER_RELOAD = 3;
 
 namespace Kernel::USB {
 
@@ -127,8 +129,9 @@ void UHCIController::reset()
     write_flbaseadd(m_framelist->physical_page(0)->paddr().get()); // Frame list (physical) address
     write_frnum(0);                                                // Set the initial frame number
 
-    // Enable all interrupt types
-    write_frnum(UHCI_USBINTR_TIMEOUT_CRC_ENABLE | UHCI_USBINTR_RESUME_INTR_ENABLE | UHCI_USBINTR_IOC_ENABLE | UHCI_USBINTR_SHORT_PACKET_INTR_ENABLE);
+    // FIXME: Work out why interrupts lock up the entire system....
+    // Disable UHCI Controller from raising an IRQ
+    write_usbintr(0);
     dbgln("UHCI: Reset completed");
 }
 
@@ -312,62 +315,191 @@ void UHCIController::start()
     dbgln("UHCI: Started");
 }
 
-struct setup_packet {
-    u8 bmRequestType;
-    u8 bRequest;
-    u16 wValue;
-    u16 wIndex;
-    u16 wLength;
-};
-
-void UHCIController::do_debug_transfer()
+TransferDescriptor* UHCIController::create_transfer_descriptor(USBPipe& pipe, PacketID direction, size_t data_len)
 {
-    dbgln("UHCI: Attempting a dummy transfer...");
+    TransferDescriptor* td = allocate_transfer_descriptor();
+    if (td == nullptr) {
+        return nullptr;
+    }
 
-    // Okay, let's set up the buffer so we can write some data
-    auto vmobj = ContiguousVMObject::create_with_size(PAGE_SIZE);
-    m_td_buffer_region = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, PAGE_SIZE, "UHCI Debug Data Region", Region::Access::Write);
+    u16 max_len = (data_len > 0) ? (data_len - 1) : 0x7ff;
 
-    // We need to set up THREE Transfer descriptors here
-    // 1. The SETUP packet TD
-    // 2. The DATA packet
-    // 3. The ACK TD that will be filled by the device
-    // We can use the buffer pool provided above to do this, using nasty pointer offsets!
-    auto setup_td = allocate_transfer_descriptor();
-    auto data_td = allocate_transfer_descriptor();
-    auto response_td = allocate_transfer_descriptor();
+    // Set the token dword
+    td->set_token((max_len << TD_TOKEN_MAXLEN_SHIFT) | ((pipe.data_toggle() ? 1 : 0) << TD_TOKEN_DATA_TOGGLE_SHIFT) | (pipe.endpoint_address() << TD_TOKEN_ENDPOINT_SHIFT) | (pipe.device_address() << TD_TOKEN_DEVICE_ADDR_SHIFT) | (static_cast<u8>(direction)));
 
-    dbgln("BUFFER PHYSICAL ADDRESS = {}", m_td_buffer_region->physical_page(0)->paddr());
+    pipe.set_toggle(!pipe.data_toggle());
 
-    setup_packet* packet = reinterpret_cast<setup_packet*>(m_td_buffer_region->vaddr().as_ptr());
-    packet->bmRequestType = 0x81;
-    packet->bRequest = 0x06;
-    packet->wValue = 0x2200;
-    packet->wIndex = 0x0;
-    packet->wLength = 8;
+    // Set some bits in the control/status register
+    if (pipe.type() == USBPipe::Type::Isochronous) {
+        td->set_isochronous();
+    } else {
+        if (direction == PacketID::IN) {
+            td->set_short_packet_detect();
+        }
+    }
 
-    // Let's begin....
-    setup_td->set_status(0x18800000);
-    setup_td->set_token(0x00E0002D);
-    setup_td->set_buffer_address(m_td_buffer_region->physical_page(0)->paddr().get());
+    // Set lowsped bit if the device connected to port is a Lowspeed device (proably unlikely...)
+    if (pipe.device_speed() == USBPipe::DeviceSpeed::LowSpeed) {
+        td->set_lowspeed();
+    }
 
-    data_td->set_status(0x18800000);
-    data_td->set_token(0x00E80069);
-    data_td->set_buffer_address(m_td_buffer_region->physical_page(0)->paddr().get() + 16);
+    td->set_active();
+    td->set_error_retry_counter(RETRY_COUNTER_RELOAD);
 
-    response_td->set_status(0x19800000);
-    response_td->set_token(0xFFE800E1);
+    return td;
+}
 
-    setup_td->insert_next_transfer_descriptor(data_td);
-    data_td->insert_next_transfer_descriptor(response_td);
-    response_td->terminate();
+bool UHCIController::create_chain(USBPipe& pipe, PacketID direction, uint32_t buff_addr, size_t max_size, size_t transfer_size, TransferDescriptor** td_chain, TransferDescriptor** last_td)
+{
+    // We need to create `n` transfer descriptors based on the max
+    // size of each transfer (which we've learned from the device already by reading
+    // it's device descriptor, or 8 bytes). Each TD then has its' buffer pointer
+    // set to the inital buffer address + (max_size * index), where index is
+    // the ID of the TD in the chain.
+    size_t byte_count = 0;
+    TransferDescriptor* current_td = nullptr;
+    TransferDescriptor* prev_td = nullptr;
+    TransferDescriptor* first_td = nullptr;
 
-    setup_td->print();
-    data_td->print();
-    response_td->print();
+    // Keep creating transfer descriptors while we still have some data
+    while (byte_count < transfer_size) {
+        size_t packet_size = transfer_size - byte_count;
+        if (packet_size > max_size) {
+            packet_size = max_size;
+        }
 
-    // Now let's (attempt) to attach to one of the queue heads
-    m_lowspeed_control_qh->attach_transfer_descriptor_chain(setup_td);
+        current_td = create_transfer_descriptor(pipe, direction, packet_size);
+        if (current_td == nullptr)
+            return false;
+
+        current_td->set_buffer_address(buff_addr + byte_count);
+        byte_count += packet_size;
+
+        if (prev_td != nullptr)
+            prev_td->insert_next_transfer_descriptor(current_td);
+        else
+            first_td = current_td;
+
+        prev_td = current_td;
+    }
+
+    *last_td = current_td;
+    *td_chain = first_td;
+    return true;
+}
+
+void UHCIController::free_descriptor_chain(TransferDescriptor* first_descriptor)
+{
+    TransferDescriptor* descriptor = first_descriptor;
+
+    while (descriptor) {
+        descriptor->free();
+        descriptor = descriptor->next_td();
+    }
+}
+
+size_t UHCIController::submit_control_transfer(USBTransfer& transfer)
+{
+    USBPipe& pipe = const_cast<USBPipe&>(transfer.pipe()); // Short circuit the pipe related to this transfer
+    bool direction_in = (transfer.request().request_type & USB_DEVICE_REQUEST_DEVICE_TO_HOST) == USB_DEVICE_REQUEST_DEVICE_TO_HOST;
+
+    // Create the setup transfer descriptor
+    TransferDescriptor* setup_td = create_transfer_descriptor(pipe, PacketID::SETUP, sizeof(USBRequestData));
+    setup_td->set_buffer_address(reinterpret_cast<intptr_t>(transfer.buffer_physical().as_ptr()));
+
+    // Create a new descriptor chain
+    TransferDescriptor* last_data_descriptor;
+    TransferDescriptor* data_descriptor_chain;
+    bool did_create_chain = create_chain(pipe,
+        direction_in ? PacketID::IN : PacketID::OUT,
+        reinterpret_cast<intptr_t>(transfer.buffer_physical().as_ptr() + sizeof(USBRequestData)),
+        pipe.max_packet_size(),
+        transfer.transfer_data_size(),
+        &data_descriptor_chain,
+        &last_data_descriptor);
+
+    if (!did_create_chain)
+        return 0; // Transfer failed
+
+    // Status TD always has toggle set to 1
+    pipe.set_toggle(true);
+
+    // Create the status transfer descriptor
+    TransferDescriptor* status_td = create_transfer_descriptor(pipe, direction_in ? PacketID::OUT : PacketID::IN, 0);
+    status_td->terminate();
+
+    // Link transfers together
+    if (data_descriptor_chain) {
+        setup_td->insert_next_transfer_descriptor(data_descriptor_chain);
+        last_data_descriptor->insert_next_transfer_descriptor(status_td);
+    } else {
+        setup_td->insert_next_transfer_descriptor(status_td);
+    }
+
+    // Cool, everything should be chained together now! Let's print it out
+    dbgln_if(UHCI_VERBOSE_DEBUG, "Setup TD");
+    if constexpr (UHCI_VERBOSE_DEBUG) {
+        setup_td->print();
+    }
+
+    if (data_descriptor_chain != nullptr) {
+        dbgln_if(UHCI_VERBOSE_DEBUG, "Data TD");
+        if constexpr (UHCI_VERBOSE_DEBUG)
+            data_descriptor_chain->print();
+    }
+
+    dbgln_if(UHCI_VERBOSE_DEBUG, "Status TD");
+    if constexpr (UHCI_VERBOSE_DEBUG) {
+        status_td->print();
+    }
+
+    QueueHead* transfer_queue = allocate_queue_head();
+    transfer_queue->attach_transfer_descriptor_chain(setup_td);
+    transfer_queue->set_transfer(&transfer);
+
+    m_fullspeed_control_qh->attach_transfer_queue(transfer_queue);
+
+    size_t transfer_size = 0;
+    while (!transfer.complete())
+        transfer_size = poll_transfer_queue(transfer_queue);
+
+    free_descriptor_chain(transfer_queue->get_first_td());
+    transfer_queue->free();
+    m_fullspeed_control_qh->free_transfer_queue(transfer_queue);
+
+    return transfer_size;
+}
+
+size_t UHCIController::poll_transfer_queue(QueueHead* transfer_queue)
+{
+    USBTransfer* transfer = transfer_queue->transfer();
+    TransferDescriptor* descriptor = transfer_queue->get_first_td();
+    bool transfer_still_in_progress = false;
+    size_t transfer_size = 0;
+
+    while (descriptor) {
+        u32 status = descriptor->status();
+
+        if (status & TransferDescriptor::StatusBits::Active) {
+            transfer_still_in_progress = true;
+            break;
+        }
+
+        if (status & TransferDescriptor::StatusBits::ErrorMask) {
+            transfer->set_complete();
+            transfer->set_error_occurred();
+            dbgln_if(UHCI_DEBUG, "UHCIController: Transfer failed! Reason: {:08x}", status);
+            return 0;
+        }
+
+        transfer_size += descriptor->actual_packet_length();
+        descriptor = descriptor->next_td();
+    }
+
+    if (!transfer_still_in_progress)
+        transfer->set_complete();
+
+    return transfer_size;
 }
 
 void UHCIController::spawn_port_proc()
@@ -390,34 +522,49 @@ void UHCIController::spawn_port_proc()
                             // Reset the port
                             port_data = read_portsc1();
                             write_portsc1(port_data | UHCI_PORTSC_PORT_RESET);
-                            for (size_t i = 0; i < 50000; ++i)
-                                IO::in8(0x80);
+                            IO::delay(500);
 
                             write_portsc1(port_data & ~UHCI_PORTSC_PORT_RESET);
-                            for (size_t i = 0; i < 100000; ++i)
-                                IO::in8(0x80);
+                            IO::delay(500);
 
                             write_portsc1(port_data & (~UHCI_PORTSC_PORT_ENABLE_CHANGED | ~UHCI_PORTSC_CONNECT_STATUS_CHANGED));
+
+                            port_data = read_portsc1();
+                            write_portsc1(port_data | UHCI_PORTSC_PORT_ENABLED);
+                            dbgln("port should be enabled now: {:#04x}\n", read_portsc1());
+
+                            USBDevice::DeviceSpeed speed = (port_data & UHCI_PORTSC_LOW_SPEED_DEVICE) ? USBDevice::DeviceSpeed::LowSpeed : USBDevice::DeviceSpeed::FullSpeed;
+                            USBDevice::create(USBDevice::PortNumber::Port1, speed);
                         } else {
                             dmesgln("UHCI: Device detach detected on Root Port 1!");
                         }
-
-                        port_data = read_portsc1();
-                        write_portsc1(port_data | UHCI_PORTSC_PORT_ENABLED);
-                        dbgln("port should be enabled now: {:#04x}\n", read_portsc1());
-                        do_debug_transfer();
                     }
                 } else {
                     port_data = UHCIController::the().read_portsc2();
                     if (port_data & UHCI_PORTSC_CONNECT_STATUS_CHANGED) {
                         if (port_data & UHCI_PORTSC_CURRRENT_CONNECT_STATUS) {
                             dmesgln("UHCI: Device attach detected on Root Port 2!");
+
+                            // Reset the port
+                            port_data = read_portsc2();
+                            write_portsc2(port_data | UHCI_PORTSC_PORT_RESET);
+                            for (size_t i = 0; i < 50000; ++i)
+                                IO::in8(0x80);
+
+                            write_portsc2(port_data & ~UHCI_PORTSC_PORT_RESET);
+                            for (size_t i = 0; i < 100000; ++i)
+                                IO::in8(0x80);
+
+                            write_portsc2(port_data & (~UHCI_PORTSC_PORT_ENABLE_CHANGED | ~UHCI_PORTSC_CONNECT_STATUS_CHANGED));
+
+                            port_data = read_portsc2();
+                            write_portsc1(port_data | UHCI_PORTSC_PORT_ENABLED);
+                            dbgln("port should be enabled now: {:#04x}\n", read_portsc1());
+                            USBDevice::DeviceSpeed speed = (port_data & UHCI_PORTSC_LOW_SPEED_DEVICE) ? USBDevice::DeviceSpeed::LowSpeed : USBDevice::DeviceSpeed::FullSpeed;
+                            USBDevice::create(USBDevice::PortNumber::Port2, speed);
                         } else {
                             dmesgln("UHCI: Device detach detected on Root Port 2!");
                         }
-
-                        UHCIController::the().write_portsc2(
-                            UHCI_PORTSC_CONNECT_STATUS_CHANGED);
                     }
                 }
             }
@@ -428,14 +575,19 @@ void UHCIController::spawn_port_proc()
 
 void UHCIController::handle_irq(const RegisterState&)
 {
+    u32 status = read_usbsts();
+
     // Shared IRQ. Not ours!
-    if (!read_usbsts())
+    if (!status)
         return;
 
     if constexpr (UHCI_DEBUG) {
         dbgln("UHCI: Interrupt happened!");
         dbgln("Value of USBSTS: {:#04x}", read_usbsts());
     }
+
+    // Write back USBSTS to clear bits
+    write_usbsts(status);
 }
 
 }

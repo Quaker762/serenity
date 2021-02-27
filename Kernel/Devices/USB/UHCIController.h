@@ -11,6 +11,8 @@
 
 #include <AK/NonnullOwnPtr.h>
 #include <Kernel/Devices/USB/UHCIDescriptorTypes.h>
+#include <Kernel/Devices/USB/USBDevice.h>
+#include <Kernel/Devices/USB/USBTransfer.h>
 #include <Kernel/IO.h>
 #include <Kernel/PCI/Device.h>
 #include <Kernel/Process.h>
@@ -32,6 +34,8 @@ public:
     void spawn_port_proc();
 
     void do_debug_transfer();
+
+    size_t submit_control_transfer(USBTransfer& transfer);
 
 private:
     UHCIController(PCI::Address, PCI::ID);
@@ -58,6 +62,11 @@ private:
 
     void create_structures();
     void setup_schedule();
+    size_t poll_transfer_queue(QueueHead* transfer_queue);
+
+    TransferDescriptor* create_transfer_descriptor(USBPipe& pipe, PacketID direction, size_t data_len);
+    bool create_chain(USBPipe& pipe, PacketID direction, uint32_t buff_addr, size_t max_size, size_t transfer_size, TransferDescriptor** td_chain, TransferDescriptor** last_td);
+    void free_descriptor_chain(TransferDescriptor* first_descriptor);
 
     QueueHead* allocate_queue_head() const;
     TransferDescriptor* allocate_transfer_descriptor() const;
@@ -78,7 +87,6 @@ private:
     OwnPtr<Region> m_framelist;
     OwnPtr<Region> m_qh_pool;
     OwnPtr<Region> m_td_pool;
-    OwnPtr<Region> m_td_buffer_region;
 };
 
 }
