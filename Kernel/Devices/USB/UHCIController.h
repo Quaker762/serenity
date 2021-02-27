@@ -29,6 +29,7 @@
 
 #include <AK/NonnullOwnPtr.h>
 #include <Kernel/Devices/USB/UHCIDescriptorTypes.h>
+#include <Kernel/Devices/USB/USBDevice.h>
 #include <Kernel/IO.h>
 #include <Kernel/PCI/Device.h>
 #include <Kernel/Process.h>
@@ -50,6 +51,7 @@ public:
     void spawn_port_proc();
 
     void do_debug_transfer();
+    void control_transfer(const USBDevice& device, USBTransfer& transfer);
 
 private:
     UHCIController(PCI::Address, PCI::ID);
@@ -76,9 +78,11 @@ private:
 
     void create_structures();
     void setup_schedule();
+    TransferDescriptor* create_transfer_descriptor(uint16_t length, USBDevice::DeviceSpeed speed, u8 toggle, PacketID pid, u8 address, PhysicalAddress buff_ptr);
 
     QueueHead* allocate_queue_head() const;
     TransferDescriptor* allocate_transfer_descriptor() const;
+
 
 private:
     IOAddress m_io_base;

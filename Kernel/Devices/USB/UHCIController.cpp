@@ -349,10 +349,6 @@ void UHCIController::do_debug_transfer()
 {
     klog() << "UHCI: Attempting a dummy transfer...";
 
-    // Okay, let's set up the buffer so we can write some data
-    auto vmobj = ContiguousVMObject::create_with_size(PAGE_SIZE);
-    m_td_buffer_region = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, PAGE_SIZE, "UHCI Debug Data Region", Region::Access::Write);
-
     // We need to set up THREE Transfer descriptors here
     // 1. The SETUP packet TD
     // 2. The DATA packet
@@ -363,6 +359,10 @@ void UHCIController::do_debug_transfer()
     auto response_td = allocate_transfer_descriptor();
 
     dbgln("BUFFER PHYSICAL ADDRESS = {}", m_td_buffer_region->physical_page(0)->paddr());
+
+    // Allocate data buffer
+    auto vmobj = ContiguousVMObject::create_with_size(2 * PAGE_SIZE);
+    m_td_buffer_region = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, 2* PAGE_SIZE, "UHCI Debug Data Region", Region::Access::Read | Region::Access::Write);
 
     setup_packet* packet = reinterpret_cast<setup_packet*>(m_td_buffer_region->vaddr().as_ptr());
     packet->bmRequestType = 0x81;
@@ -395,6 +395,49 @@ void UHCIController::do_debug_transfer()
     m_lowspeed_control_qh->attach_transfer_descriptor_chain(setup_td);
 }
 
+void UHCIController::control_transfer(const USBDevice& device, USBTransfer& transfer [[maybe_unused]])
+{
+    u8 toggle = 0;  // Bistuff stoggle
+    PacketID pid;   // Packet ID
+    TransferDescriptor* setup_td;
+    TransferDescriptor* status_packet;
+
+    // Allocate data buffer
+    auto vmobj = ContiguousVMObject::create_with_size(PAGE_SIZE);
+    auto data_buffer = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, PAGE_SIZE, "UHCI Data Buffer", Region::Access::Write);
+
+    // Allocate setup and status td
+    setup_td = allocate_transfer_descriptor();
+    status_packet = allocate_transfer_descriptor();
+
+    // Token
+    setup_td->set_packet_id(PacketID::SETUP);
+    setup_td->set_device_address(device.address());
+    setup_td->set_device_endpoint(0);
+    setup_td->set_data_toggle(toggle);
+
+    // Control
+    setup_td->set_max_len(device.max_packet_size());
+    setup_td->set_active();
+    if(device.speed() == USBDevice::DeviceSpeed::LowSpeed)
+        setup_td->set_lowspeed();
+    setup_td->set_error_retry_counter(3);
+
+    // TODO: set buffer
+
+    // Data transfer descriptors
+    TransferDescriptor* prev_td = setup_td;
+    for(size_t num_bytes_remaining = transfer.length(); num_bytes_remaining > 0; num_bytes_remaining -= device.max_packet_size())
+    {
+        TransferDescriptor* td = allocate_transfer_descriptor();
+
+        toggle ^= 1; // Flip the stuffing bit
+
+        prev_td->insert_next_transfer_descriptor(td);
+        prev_td = td;
+    }
+}
+
 void UHCIController::spawn_port_proc()
 {
     RefPtr<Thread> usb_hotplug_thread;
@@ -425,6 +468,10 @@ void UHCIController::spawn_port_proc()
                                 IO::in8(0x80);
 
                             write_portsc1(port_data & (~UHCI_PORTSC_PORT_ENABLE_CHANGED | ~UHCI_PORTSC_CONNECT_STATUS_CHANGED));
+
+                            port_data = read_portsc1();
+                            USBDevice::DeviceSpeed speed = (port_data & UHCI_PORTSC_LOW_SPEED_DEVICE) ? USBDevice::DeviceSpeed::LowSpeed : USBDevice::DeviceSpeed::FullSpeed;
+                            USBDevice::create_usb_device(USBDevice::PortNumber::Port1, speed);
                         } else {
                             dmesgln("UHCI: Device detach detected on Root Port 1!");
                         }
@@ -432,19 +479,35 @@ void UHCIController::spawn_port_proc()
                         port_data = read_portsc1();
                         write_portsc1(port_data | UHCI_PORTSC_PORT_ENABLED);
                         dbgln("port should be enabled now: {:#04x}\n", read_portsc1());
-                        do_debug_transfer();
                     }
                 } else {
                     port_data = UHCIController::the().read_portsc2();
                     if (port_data & UHCI_PORTSC_CONNECT_STATUS_CHANGED) {
                         if (port_data & UHCI_PORTSC_CURRRENT_CONNECT_STATUS) {
                             dmesgln("UHCI: Device attach detected on Root Port 2!");
+
+                            // Reset the port
+                            port_data = read_portsc2();
+                            write_portsc2(port_data | UHCI_PORTSC_PORT_RESET);
+                            for (size_t i = 0; i < 50000; ++i)
+                                IO::in8(0x80);
+
+                            write_portsc2(port_data & ~UHCI_PORTSC_PORT_RESET);
+                            for (size_t i = 0; i < 100000; ++i)
+                                IO::in8(0x80);
+
+                            write_portsc2(port_data & (~UHCI_PORTSC_PORT_ENABLE_CHANGED | ~UHCI_PORTSC_CONNECT_STATUS_CHANGED));
+
+                            port_data = read_portsc2();
+                            USBDevice::DeviceSpeed speed = (port_data & UHCI_PORTSC_LOW_SPEED_DEVICE) ? USBDevice::DeviceSpeed::LowSpeed : USBDevice::DeviceSpeed::FullSpeed;
+                            USBDevice::create_usb_device(USBDevice::PortNumber::Port2, speed);
                         } else {
                             dmesgln("UHCI: Device detach detected on Root Port 2!");
                         }
 
-                        UHCIController::the().write_portsc2(
-                            UHCI_PORTSC_CONNECT_STATUS_CHANGED);
+                        port_data = read_portsc2();
+                        write_portsc2(port_data | UHCI_PORTSC_PORT_ENABLED);
+                        dbgln("port should be enabled now: {:#04x}\n", read_portsc2());
                     }
                 }
             }

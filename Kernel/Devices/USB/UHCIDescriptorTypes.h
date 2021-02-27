@@ -67,6 +67,8 @@ struct alignas(16) TransferDescriptor final {
     enum class ControlBits : u32 {
         InterruptOnComplete = (1 << 24),
         IsochronousSelect = (1 << 25),
+        LowSpeedDevice = (1 << 26),
+        ShortPacketDetect = (1 << 29),
     };
 
     TransferDescriptor() = delete;
@@ -81,6 +83,7 @@ struct alignas(16) TransferDescriptor final {
     u32 status() const { return (m_control_status >> 16) & 0xff; }
     u32 token() const { return m_token; }
     u32 buffer_ptr() const { return m_buffer_ptr; }
+    u16 actual_packet_length() const { return (m_control_status & 0x7ff) + 1; }
 
     bool in_use() const { return m_in_use; }
     bool stalled() const { return m_control_status & static_cast<u32>(StatusBits::Stalled); }
@@ -101,6 +104,35 @@ struct alignas(16) TransferDescriptor final {
         m_control_status = ctrl;
     }
 
+    void set_interrupt_on_complete()
+    {
+        u32 ctrl = m_control_status;
+        ctrl |= static_cast<u32>(ControlBits::InterruptOnComplete);
+        m_control_status = ctrl;
+    }
+
+    void set_lowspeed()
+    {
+        u32 ctrl = m_control_status;
+        ctrl |= static_cast<u32>(ControlBits::LowSpeedDevice);
+        m_control_status = ctrl;
+    }
+
+    void set_error_retry_counter(u8 num_retries)
+    {
+        ASSERT(num_retries <= 3);
+        u32 ctrl = m_control_status;
+        ctrl |= (num_retries << 27);
+        m_control_status = ctrl;
+    }
+
+    void set_short_packet_detect()
+    {
+        u32 ctrl = m_control_status;
+        ctrl |= static_cast<u32>(ControlBits::ShortPacketDetect);
+        m_control_status = ctrl;
+    }
+
     void set_control_status(u32 control_status) { m_control_status = control_status; }
     void set_in_use(bool in_use) { m_in_use = in_use; }
     void set_max_len(u16 max_len)
@@ -109,10 +141,22 @@ struct alignas(16) TransferDescriptor final {
         m_token |= (max_len << 21);
     }
 
+    void set_device_endpoint(u8 endpoint)
+    {
+        ASSERT(endpoint <= 0xf);
+        m_token |= (endpoint << 18);
+    }
+
     void set_device_address(u8 address)
     {
         ASSERT(address <= 0x7f);
         m_token |= (address << 8);
+    }
+
+    void set_data_toggle(u8 toggle)
+    {
+        ASSERT(toggle <= 1);
+        m_token |= (toggle << 19);
     }
 
     void set_packet_id(PacketID pid) { m_token |= static_cast<u32>(pid); }
@@ -124,10 +168,10 @@ struct alignas(16) TransferDescriptor final {
 
     void print()
     {
-        dbgln("UHCI: TD({}) @ {}: link_ptr={}, status={}, token={}, buffer_ptr={}", this, m_paddr, m_link_ptr, (u32)m_control_status, m_token, m_buffer_ptr);
+        dbgln("UHCI: TD({:#04x}) @ {:#04x}: link_ptr={:#04x}, status={:#04x}, token={:#04x}, buffer_ptr={:#04x}", this, m_paddr, m_link_ptr, (u32)m_control_status, m_token, m_buffer_ptr);
 
         // Now let's print the flags!
-        dbgln("UHCI: TD({}) @ {}: link_ptr={}{}{}, status={}{}{}{}{}{}{}",
+        dbgln("UHCI: TD({:#04x}) @ {:#04x}: link_ptr={}{}{}, status={}{}{}{}{}{}{}",
             this,
             m_paddr,
             (last_in_chain()) ? "T " : "",
@@ -264,7 +308,7 @@ struct alignas(16) QueueHead {
 
     void print()
     {
-        dbgln("UHCI: QH({}) @ {}: link_ptr={}, element_link_ptr={}", this, m_paddr, m_link_ptr, (FlatPtr)m_element_link_ptr);
+        dbgln("UHCI: QH({:#04x}) @ {:#04x}: link_ptr={:#04x}, element_link_ptr={:#04x}", this, m_paddr, m_link_ptr, (FlatPtr)m_element_link_ptr);
     }
 
 private:
