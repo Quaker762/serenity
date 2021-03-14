@@ -28,15 +28,16 @@
 
 #include <AK/OwnPtr.h>
 #include <AK/Types.h>
-#include <Kernel/Devices/USB/USBTransfer.h>
+#include <Kernel/Devices/USB/USBPipe.h>
 
 namespace Kernel::USB
 {
 
 //
-// NOTE: The USB Spec refers to what this class describes as a "pipe".
-// For our own sanity, we'll just refer to it in more apt terminology..
+// Some nice info from FTDI on device enumeration and how some of this
+// glues together:
 //
+// https://www.ftdichip.com/Support/Documents/TechnicalNotes/TN_113_Simplified%20Description%20of%20USB%20Device%20Enumeration.pdf
 class USBDevice
 {
 public:
@@ -65,17 +66,19 @@ public:
     DeviceSpeed speed() const { return m_device_speed; }
 
     u8 address() const { return m_address; }
-    u8 max_packet_size() const { return m_max_packet_size; }
 
 private:
-    bool submit_request(u8 type, u8 request, u16 value, u16 index, u16 length, void* data);
 
 private:
     PortNumber m_device_port;       // What port is this device attached to
     DeviceSpeed m_device_speed;     // What speed is this device running at
     u8 m_address;                   // USB address assigned to this device
-    u8 m_max_packet_size;           // Maximum size of packets (in bytes) supported by this device
 
+    // Device description
+    u16 m_vendor_id;                // This device's vendor ID assigned by the USB group
+    u16 m_product_id;               // This device's product ID assigned by the USB group
+
+    OwnPtr<USBPipe> m_default_pipe; // Default communication pipe (endpoint0) used during enumeration
 };
 
 }

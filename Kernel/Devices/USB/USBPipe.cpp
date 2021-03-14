@@ -23,47 +23,46 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <Kernel/Devices/USB/USBPipe.h>
 
-#include <AK/OwnPtr.h>
-#include <AK/Types.h>
-#include <AK/Vector.h>
-#include <Kernel/Devices/USB/UHCIController.h>
-#include <Kernel/Devices/USB/USBDescriptors.h>
-#include <Kernel/Devices/USB/USBDevice.h>
-
-static u32 s_next_usb_address [[maybe_unused]] = 1;                           // Next address we hand out to a device once it's plugged into the machine
-
-namespace Kernel::USB {
-
-
-void USBDevice::create_usb_device(PortNumber port, DeviceSpeed speed)
-{
-    USBDevice test_device(port, speed);
-    test_device.initialize_device();
-}
-
-USBDevice::USBDevice(PortNumber port, DeviceSpeed speed)
-    : m_device_port(port)
-    , m_device_speed(speed)
-    , m_address(0)
+namespace Kernel::USB
 {
 
-    // Create the default pipe based on the speed of the device
-    switch(speed)
-    {
-    case DeviceSpeed::LowSpeed:
-        m_default_pipe = USBPipe::create_pipe(USBPipe::Type::Control, USBPipe::Direction::In, 8);
-        break;
-    case DeviceSpeed::FullSpeed:
-        m_default_pipe = USBPipe::create_pipe(USBPipe::Type::Control, USBPipe::Direction::In, 64);
-        break;
-    }
-
-
+OwnPtr<USBPipe> USBPipe::create_pipe(Type type, Direction direction, u16 max_packet_size)
+{
 
 }
 
-USBDevice::~USBDevice()
+OwnPtr<USBPipe> USBPipe::create_pipe(Type type, Direction direction, u8 device_address, u8 endpoint_address, u16 max_packet_size, u8 poll_interval)
+{
+
+}
+
+USBPipe::USBPipe(Type type, USBPipe::Direction direction, u16 max_packet_size)
+    : m_type(type),
+      m_direction(direction),
+      m_device_address(0),
+      m_endpoint_address(0),
+      m_max_packet_size(max_packet_size),
+      m_poll_interval(0)
+{
+
+}
+
+USBPipe::USBPipe(Type type, Direction direction, endpoint_descriptor& endpoint [[maybe_unused]])
+    : m_type(type),
+      m_direction(direction)
+{
+    // TODO: decode endpoint structure
+}
+
+USBPipe::USBPipe(Type type, Direction direction, u8 device_address, u8 endpoint_address, u16 max_packet_size, u8 poll_interval)
+    : m_type(type),
+      m_direction(direction),
+      m_device_address(device_address),
+      m_endpoint_address(endpoint_address),
+      m_max_packet_size(max_packet_size),
+      m_poll_interval(poll_interval)
 {
 
 }

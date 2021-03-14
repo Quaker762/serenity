@@ -222,6 +222,14 @@ UNMAP_AFTER_INIT void UHCIController::create_structures()
     klog() << "\tqh_pool: " << PhysicalAddress(m_qh_pool->physical_page(0)->paddr()) << ", length: " << m_qh_pool->range().size();
     klog() << "\ttd_pool: " << PhysicalAddress(m_td_pool->physical_page(0)->paddr()) << ", length: " << m_td_pool->range().size();
 #endif
+
+    // Create two physical pages for Port 1 and Port 2
+    auto vmobj = ContiguousVMObject::create_with_size(2 * PAGE_SIZE);
+    m_data_buffer = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, 2 * PAGE_SIZE, "UHCI Data Buffer Region", Region::Access::Read | Region::Access::Write);
+
+    if constexpr (UHCI_DEBUG) {
+        dbgln("UHCI: Created data buffer region @ {:#04x}", m_data_buffer->physical_page(0)->paddr().get());
+    }
 }
 
 UNMAP_AFTER_INIT void UHCIController::setup_schedule()
@@ -358,13 +366,12 @@ void UHCIController::do_debug_transfer()
     auto data_td = allocate_transfer_descriptor();
     auto response_td = allocate_transfer_descriptor();
 
-    dbgln("BUFFER PHYSICAL ADDRESS = {}", m_td_buffer_region->physical_page(0)->paddr());
-
-    // Allocate data buffer
     auto vmobj = ContiguousVMObject::create_with_size(2 * PAGE_SIZE);
-    m_td_buffer_region = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, 2* PAGE_SIZE, "UHCI Debug Data Region", Region::Access::Read | Region::Access::Write);
+    auto td_buffer_region = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, 2* PAGE_SIZE, "UHCI Debug Data Region", Region::Access::Read | Region::Access::Write);
 
-    setup_packet* packet = reinterpret_cast<setup_packet*>(m_td_buffer_region->vaddr().as_ptr());
+    dbgln("BUFFER PHYSICAL ADDRESS = {}", td_buffer_region->physical_page(0)->paddr());
+
+    setup_packet* packet = reinterpret_cast<setup_packet*>(td_buffer_region->vaddr().as_ptr());
     packet->bmRequestType = 0x81;
     packet->bRequest = 0x06;
     packet->wValue = 0x2200;
@@ -374,11 +381,11 @@ void UHCIController::do_debug_transfer()
     // Let's begin....
     setup_td->set_status(0x18800000);
     setup_td->set_token(0x00E0002D);
-    setup_td->set_buffer_address(m_td_buffer_region->physical_page(0)->paddr().get());
+    setup_td->set_buffer_address(td_buffer_region->physical_page(0)->paddr().get());
 
     data_td->set_status(0x18800000);
     data_td->set_token(0x00E80069);
-    data_td->set_buffer_address(m_td_buffer_region->physical_page(0)->paddr().get() + 16);
+    data_td->set_buffer_address(td_buffer_region->physical_page(0)->paddr().get() + 16);
 
     response_td->set_status(0x19800000);
     response_td->set_token(0xFFE800E1);
@@ -402,10 +409,6 @@ void UHCIController::control_transfer(const USBDevice& device, USBTransfer& tran
     TransferDescriptor* setup_td;
     TransferDescriptor* status_packet;
 
-    // Allocate data buffer
-    auto vmobj = ContiguousVMObject::create_with_size(PAGE_SIZE);
-    auto data_buffer = MemoryManager::the().allocate_kernel_region_with_vmobject(*vmobj, PAGE_SIZE, "UHCI Data Buffer", Region::Access::Write);
-
     // Allocate setup and status td
     setup_td = allocate_transfer_descriptor();
     status_packet = allocate_transfer_descriptor();
@@ -417,7 +420,7 @@ void UHCIController::control_transfer(const USBDevice& device, USBTransfer& tran
     setup_td->set_data_toggle(toggle);
 
     // Control
-    setup_td->set_max_len(device.max_packet_size());
+    setup_td->set_max_len(device.endpoint0_packet_size());
     setup_td->set_active();
     if(device.speed() == USBDevice::DeviceSpeed::LowSpeed)
         setup_td->set_lowspeed();

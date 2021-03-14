@@ -31,6 +31,12 @@
 namespace Kernel::USB
 {
 
+struct [[gnu::packed]] descriptor_common
+{
+    u8 length;
+    u8 descriptor_type;
+};
+
 //
 //  Device Descriptor
 //  =================
@@ -40,10 +46,9 @@ namespace Kernel::USB
 //  as well as the vendor and product ID of the device.
 //
 //  https://beyondlogic.org/usbnutshell/usb5.shtml#DeviceDescriptors
-struct [[gnu::packed]] DeviceDescriptor
+struct [[gnu::packed]] device_descriptor
 {
-    u8 descriptor_length;
-    u8 descriptor_type;
+    descriptor_common descriptor_header;
     u16 usb_spec_compliance_bcd;
     u8 device_class;
     u8 device_sub_class;
@@ -65,10 +70,9 @@ struct [[gnu::packed]] DeviceDescriptor
 //  A USB device can have multiple configurations, which tells us about how the
 //  device is physically configured (e.g how it's powered, max power consumption etc).
 //
-struct [[gnu::packed]] ConfigurationDescriptor
+struct [[gnu::packed]] configuration_descriptor
 {
-    u8 descriptor_length;
-    u8 descriptor_type;
+    descriptor_common descriptor_header;
     u16 total_length;
     u8 number_of_interfaces;
     u8 configuration_value;
@@ -80,15 +84,47 @@ struct [[gnu::packed]] ConfigurationDescriptor
 //
 //  Interface Descriptor
 //  ====================
-
-enum DescriptorType
+//
+//  An interface descriptor describes to us one or more endpoints, grouped
+//  together to define a singular function of a device.
+//  As an example, a USB webcam might have two interface descriptors; one
+//  for the camera, and one for the microphone.
+//
+struct [[gnu::packed]] interface_descriptor
 {
-    DeviceDescriptor = 0x01,
-    ConfigurationDescriptor = 0x02,
-    StringDescriptor = 0x03,
-    InterfaceDescriptor = 0x04,
-    EndpointDescriptor = 0x05,
-    DeviceQualifierDescriptor = 0x06
+    descriptor_common descriptor_header;
+    u8 interface_id;
+    u8 alternate_setting;
+    u8 number_of_endpoints;
+    u8 interface_class_code;
+    u8 interface_sub_class_code;
+    u8 interface_protocol;
+    u8 interface_string_descriptor_index;
 };
+
+//
+//  Endpoint Descriptor
+//  ===================
+//
+//  The lowest leaf in the configuration tree. And endpoint descriptor describes
+//  the physical transfer properties of the endpoint (that isn't endpoint0).
+//  The description given by this structure is used by a pipe to create a
+//  "connection" from the host to the device.
+//  https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-endpoints-and-their-pipes
+struct [[gnu::packed]] endpoint_descriptor
+{
+    descriptor_common descriptor_header;
+    u8 endpoint_address;
+    u8 endpoint_attributes_bitmap;
+    u16 max_packet_size;
+    u8 poll_interval_in_frames;
+};
+
+static constexpr u8 DESCRIPTOR_TYPE_DEVICE = 0x01;
+static constexpr u8 DESCRIPTOR_TYPE_CONFIGURATION = 0x02;
+static constexpr u8 DESCRIPTOR_TYPE_STRING = 0x03;
+static constexpr u8 DESCRIPTOR_TYPE_INTERFACE = 0x04;
+static constexpr u8 DESCRIPTOR_TYPE_ENDPOINT = 0x05;
+static constexpr u8 DESCRIPTOR_TYPE_DEVICE_QUALIFIER = 0x06;
 
 }

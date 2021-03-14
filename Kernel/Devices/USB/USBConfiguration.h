@@ -24,48 +24,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <AK/OwnPtr.h>
-#include <AK/Types.h>
-#include <AK/Vector.h>
-#include <Kernel/Devices/USB/UHCIController.h>
-#include <Kernel/Devices/USB/USBDescriptors.h>
-#include <Kernel/Devices/USB/USBDevice.h>
+#pragma once
 
-static u32 s_next_usb_address [[maybe_unused]] = 1;                           // Next address we hand out to a device once it's plugged into the machine
-
-namespace Kernel::USB {
-
-
-void USBDevice::create_usb_device(PortNumber port, DeviceSpeed speed)
-{
-    USBDevice test_device(port, speed);
-    test_device.initialize_device();
-}
-
-USBDevice::USBDevice(PortNumber port, DeviceSpeed speed)
-    : m_device_port(port)
-    , m_device_speed(speed)
-    , m_address(0)
+namespace Kernel::USB
 {
 
-    // Create the default pipe based on the speed of the device
-    switch(speed)
-    {
-    case DeviceSpeed::LowSpeed:
-        m_default_pipe = USBPipe::create_pipe(USBPipe::Type::Control, USBPipe::Direction::In, 8);
-        break;
-    case DeviceSpeed::FullSpeed:
-        m_default_pipe = USBPipe::create_pipe(USBPipe::Type::Control, USBPipe::Direction::In, 64);
-        break;
-    }
 
-
-
-}
-
-USBDevice::~USBDevice()
+class USBConfiguration
 {
+public:
+private:
 
-}
+};
+
 
 }

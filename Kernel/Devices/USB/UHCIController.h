@@ -100,7 +100,7 @@ private:
     OwnPtr<Region> m_framelist;
     OwnPtr<Region> m_qh_pool;
     OwnPtr<Region> m_td_pool;
-    OwnPtr<Region> m_td_buffer_region;
+    OwnPtr<Region> m_data_buffer;
 };
 
 }
