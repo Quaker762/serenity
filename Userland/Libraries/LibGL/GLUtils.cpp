@@ -42,7 +42,7 @@ void glClear(GLbitfield mask)
         uint8_t b = static_cast<uint8_t>(floor(g_gl_state->clear_color.b * 255.0f));
 
         uint64_t color = r << 16 | g << 8 | b;
-        UNUSED_VAR(color);
+        (void)(color);
         //rush3d_register_write(BACK_COLOR_REGISTER, color);
         //rush3d_register_write(CONTROL_STATUS_REGISTER_WRITE, CLEAR_FRAMEBUFFER);
     } else {
@@ -80,8 +80,8 @@ GLubyte* glGetString(GLenum name)
 
 void glViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-    UNUSED_VAR(x);
-    UNUSED_VAR(y);
-    UNUSED_VAR(width);
-    UNUSED_VAR(height);
+    (void)(x);
+    (void)(y);
+    (void)(width);
+    (void)(height);
 }

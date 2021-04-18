@@ -26,6 +26,9 @@
 #include "GL/gl.h"
 #include "GLContext.h"
 #include <AK/Assertions.h>
+#include <AK/Format.h>
+
+using AK::dbgln;
 
 void glMatrixMode(GLenum mode)
 {
@@ -88,9 +91,9 @@ void glPopMatrix()
 void glLoadIdentity()
 {
     if (g_gl_state->curr_matrix_mode == GL_PROJECTION)
-        g_gl_state->projection_matrix.load_identity();
+        g_gl_state->projection_matrix = FloatMatrix4x4::identity();
     else if (g_gl_state->curr_matrix_mode == GL_MODELVIEW)
-        g_gl_state->model_view_matrix.load_identity();
+        g_gl_state->model_view_matrix = FloatMatrix4x4::identity();
     else
         VERIFY_NOT_REACHED();
 }
@@ -108,27 +111,23 @@ void glLoadIdentity()
  */
 void glFrustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearVal, GLdouble farVal)
 {
-    Mat4 frustum;
-    GLdouble a;
-    GLdouble b;
-    GLdouble c;
-    GLdouble d;
+    float a;
+    float b;
+    float c;
+    float d;
 
     // Let's do some math!
-    a = (right + left) / (right - left);
-    b = (top + bottom) / (top - bottom);
-    c = -((farVal + nearVal) / (farVal - nearVal));
-    d = -((2 * (farVal * nearVal)) / (farVal - nearVal));
+    a = ((float)right + (float)left) / ((float)right - (float)left);
+    b = ((float)top + (float)bottom) / ((float)top - (float)bottom);
+    c = -(((float)farVal + (float)nearVal) / ((float)farVal - (float)nearVal));
+    d = -((2 * ((float)farVal * (float)nearVal)) / ((float)farVal - (float)nearVal));
 
-    frustum(0, 0, ((2 * nearVal) / (right - left)));
-    frustum(1, 1, ((2 * nearVal) / (top - bottom)));
-    frustum(2, 0, a);
-    frustum(2, 1, b);
-    frustum(2, 2, c);
-    frustum(2, 3, -1);
-    frustum(3, 2, d);
-    frustum(3, 3, 0);
-    // Phew
+    FloatMatrix4x4 frustum {
+        ((2 * (float)nearVal) / ((float)right - (float)left)), 0, a, 0,
+        0, ((2 * (float)nearVal) / ((float)top - (float)bottom)), b, 0,
+        0, 0, c, d,
+        0, 0, -1, 0
+    };
 
     if (g_gl_state->curr_matrix_mode == GL_PROJECTION) {
         g_gl_state->projection_matrix = g_gl_state->projection_matrix * frustum;

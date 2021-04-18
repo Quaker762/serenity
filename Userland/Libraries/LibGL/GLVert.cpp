@@ -25,10 +25,10 @@
  */
 #include "GL/gl.h"
 #include "GLContext.h"
-#include "math/vec4.h"
 
 #include <AK/QuickSort.h>
 #include <AK/Vector.h>
+#include <LibGfx/Vector4.h>
 #include <math.h>
 
 #define NUM_CLIP_PLANES 6
@@ -38,7 +38,7 @@ static Vector<GLVertex> vertex_list;
 static Vector<GLTriangle> triangle_list;
 static Vector<GLTriangle> processed_triangles;
 
-static Vec4 clip_planes[] = {
+static FloatVector4 clip_planes[] = {
     { -1, 0, 0, 1 }, // Left Plane
     { 1, 0, 0, 1 },  // Right Plane
     { 0, 1, 0, 1 },  // Top Plane
@@ -47,7 +47,7 @@ static Vec4 clip_planes[] = {
     { 0, 0, -1, 1 }  // Far Plane
 };
 
-static Vec4 clip_plane_normals[] = {
+static FloatVector4 clip_plane_normals[] = {
     { 1, 0, 0, 1 },  // Left Plane
     { -1, 0, 0, 1 }, // Right Plane
     { 0, -1, 0, 1 }, // Top Plane
@@ -72,7 +72,7 @@ void glBegin(GLenum mode)
 
 // TODO: Change this to a vertex!
 // Determines whether or not a vertex is inside the frustum for a given plane
-static bool vert_inside_plane(const Vec4& vec, ClippingPlane plane)
+static bool vert_inside_plane(const FloatVector4& vec, ClippingPlane plane)
 {
     switch (plane) {
     case ClippingPlane::LEFT:
@@ -93,14 +93,14 @@ static bool vert_inside_plane(const Vec4& vec, ClippingPlane plane)
 }
 
 // TODO: This needs to interpolate color/UV data as well!
-static Vec4 clip_intersection_point(const Vec4& vec, const Vec4& prev_vec, ClippingPlane plane_index)
+static FloatVector4 clip_intersection_point(const FloatVector4& vec, const FloatVector4& prev_vec, ClippingPlane plane_index)
 {
     // https://github.com/fogleman/fauxgl/blob/master/clipping.go#L20
     // How the fuck does this work??????
-    Vec4 u, w;
-    Vec4 ret = prev_vec;
-    Vec4 plane = clip_planes[plane_index];
-    Vec4 plane_normal = clip_plane_normals[plane_index];
+    FloatVector4 u, w;
+    FloatVector4 ret = prev_vec;
+    FloatVector4 plane = clip_planes[plane_index];
+    FloatVector4 plane_normal = clip_plane_normals[plane_index];
 
     u = vec;
     u -= prev_vec;
@@ -115,9 +115,9 @@ static Vec4 clip_intersection_point(const Vec4& vec, const Vec4& prev_vec, Clipp
 
 // https://groups.csail.mit.edu/graphics/classes/6.837/F04/lectures/07_Pipeline_II.pdf
 // This is a really rough implementation of the Sutherland-Hodgman algorithm in clip-space
-static void clip_triangle_against_frustum(Vector<Vec4>& in_vec)
+static void clip_triangle_against_frustum(Vector<FloatVector4>& in_vec)
 {
-    Vector<Vec4> clipped_polygon = in_vec;    // in_vec = subjectPolygon, clipped_polygon = outputList
+    Vector<FloatVector4> clipped_polygon = in_vec;    // in_vec = subjectPolygon, clipped_polygon = outputList
     for (int i = 0; i < NUM_CLIP_PLANES; i++) // Test against each clip plane
     {
         ClippingPlane plane = static_cast<ClippingPlane>(i); // Hahaha, what the fuck
@@ -128,20 +128,20 @@ static void clip_triangle_against_frustum(Vector<Vec4>& in_vec)
         if (in_vec.size() == 0)
             return;
 
-        Vec4 prev_vec = in_vec.at(in_vec.size() - 1);
+        FloatVector4 prev_vec = in_vec.at(in_vec.size() - 1);
 
         for (size_t j = 0; j < in_vec.size(); j++) // Perform this for each vertex
         {
-            const Vec4& vec = in_vec.at(j);
+            const FloatVector4& vec = in_vec.at(j);
             if (vert_inside_plane(vec, plane)) {
                 if (!vert_inside_plane(prev_vec, plane)) {
-                    Vec4 intersect = clip_intersection_point(prev_vec, vec, plane);
+                    FloatVector4 intersect = clip_intersection_point(prev_vec, vec, plane);
                     clipped_polygon.append(intersect);
                 }
 
                 clipped_polygon.append(vec);
             } else if (vert_inside_plane(prev_vec, plane)) {
-                Vec4 intersect = clip_intersection_point(prev_vec, vec, plane);
+                FloatVector4 intersect = clip_intersection_point(prev_vec, vec, plane);
                 clipped_polygon.append(intersect);
             }
 
@@ -222,9 +222,9 @@ void glEnd()
         GLVertex& vertexb = triangle.vertices[1];
         GLVertex& vertexc = triangle.vertices[2];
 
-        Vec4 veca({ vertexa.x, vertexa.y, vertexa.z, 1.0f });
-        Vec4 vecb({ vertexb.x, vertexb.y, vertexb.z, 1.0f });
-        Vec4 vecc({ vertexc.x, vertexc.y, vertexc.z, 1.0f });
+        FloatVector4 veca({ vertexa.x, vertexa.y, vertexa.z, 1.0f });
+        FloatVector4 vecb({ vertexb.x, vertexb.y, vertexb.z, 1.0f });
+        FloatVector4 vecc({ vertexc.x, vertexc.y, vertexc.z, 1.0f });
 
         // First multiply the vertex by the MODELVIEW matrix and then the PROJECTION matrix
         veca = g_gl_state->model_view_matrix * veca;
@@ -246,7 +246,7 @@ void glEnd()
 
         // Okay, let's do some face culling first
 
-        Vector<Vec4> vecs;
+        Vector<FloatVector4> vecs;
         Vector<GLVertex> verts;
 
         vecs.append(veca);
@@ -256,14 +256,14 @@ void glEnd()
 
         // TODO: Copy color and UV information too!
         for (size_t vec_idx = 0; vec_idx < vecs.size(); vec_idx++) {
-            Vec4& vec = vecs.at(vec_idx);
+            FloatVector4& vec = vecs.at(vec_idx);
             GLVertex vertex;
 
             // Perform the perspective divide
             if (vec.w() != 0.0f) {
-                vec.x(vec.x() / vec.w());
-                vec.y(vec.y() / vec.w());
-                vec.z(vec.z() / vec.w());
+                vec.set_x(vec.x() / vec.w());
+                vec.set_y(vec.y() / vec.w());
+                vec.set_z(vec.z() / vec.w());
             }
 
             vertex.x = vec.x();
@@ -354,12 +354,12 @@ void glEnd()
         int32_t vertexBy = triangle.vertices[1].y;
         int32_t vertexCx = triangle.vertices[2].x;
         int32_t vertexCy = triangle.vertices[2].y;
-        UNUSED_VAR(vertexAx);
-        UNUSED_VAR(vertexAy);
-        UNUSED_VAR(vertexBx);
-        UNUSED_VAR(vertexBy);
-        UNUSED_VAR(vertexCx);
-        UNUSED_VAR(vertexCy);
+        (void)(vertexAx);
+        (void)(vertexAy);
+        (void)(vertexBx);
+        (void)(vertexBy);
+        (void)(vertexCx);
+        (void)(vertexCy);
     }
 
     // We probably need to wait for the card to finish drawing here before we clear
@@ -389,40 +389,10 @@ void glVertex3f(GLfloat x, GLfloat y, GLfloat z)
 
 void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 {
-    Vec4 vec = { x, y, z, 0 };
+    FloatVector3 axis = { x, y, z };
+    axis.normalize();
+    auto rotation_mat = FloatMatrix4x4::rotate(axis, angle);
 
-    Mat4 rotation_mat;
-    float cosangle = cos(angle * (M_PI / 180));
-    float sinangle = sin(angle * (M_PI / 180));
-    float one_minus_cosangle = 1 - cosangle;
-
-    if (vec.length() > 1.0f)
-        vec.normalize();
-
-    // Here we go...
-    // https://learnopengl.com/Getting-started/Transformations
-    // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glRotate.xml
-    rotation_mat(0, 0, ((vec.x() * vec.x()) * one_minus_cosangle) + cosangle);
-    rotation_mat(0, 1, ((vec.y() * vec.x()) * one_minus_cosangle) + (vec.z() * sinangle));
-    rotation_mat(0, 2, ((vec.x() * vec.z()) * one_minus_cosangle) - (vec.y() * sinangle));
-    rotation_mat(0, 3, 0.0f);
-
-    rotation_mat(1, 0, ((vec.x() * vec.y()) * one_minus_cosangle) - (vec.z() * sinangle));
-    rotation_mat(1, 1, ((vec.y() * vec.y()) * one_minus_cosangle) + cosangle);
-    rotation_mat(1, 2, ((vec.y() * vec.z()) * one_minus_cosangle) + (vec.x() * sinangle));
-    rotation_mat(1, 3, 0.0f);
-
-    rotation_mat(2, 0, ((vec.x() * vec.z()) * one_minus_cosangle) + (vec.y() * sinangle));
-    rotation_mat(2, 1, ((vec.y() * vec.z()) * one_minus_cosangle) - (vec.x() * sinangle));
-    rotation_mat(2, 2, ((vec.z() * vec.z()) * one_minus_cosangle) + cosangle);
-    rotation_mat(2, 3, 0.0f);
-
-    rotation_mat(3, 0, 0.0f);
-    rotation_mat(3, 1, 0.0f);
-    rotation_mat(3, 2, 0.0f);
-    rotation_mat(3, 3, 1.0f);
-
-    // Phew...
     if (g_gl_state->curr_matrix_mode == GL_MODELVIEW) {
         g_gl_state->model_view_matrix = g_gl_state->model_view_matrix * rotation_mat;
     } else if (g_gl_state->curr_matrix_mode == GL_PROJECTION) {
@@ -432,32 +402,9 @@ void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 
 void glTranslatef(GLfloat x, GLfloat y, GLfloat z)
 {
-    Mat4 translation_mat;
-
-    translation_mat(0, 0, 1.0f);
-    translation_mat(0, 1, 0.0f);
-    translation_mat(0, 2, 0.0f);
-    translation_mat(0, 3, 0.0f);
-
-    translation_mat(1, 0, 0.0f);
-    translation_mat(1, 1, 1.0f);
-    translation_mat(1, 2, 0.0f);
-    translation_mat(1, 3, 0.0f);
-
-    translation_mat(2, 0, 0.0f);
-    translation_mat(2, 1, 0.0f);
-    translation_mat(2, 2, 1.0f);
-    translation_mat(2, 3, 0.0f);
-
-    translation_mat(3, 0, x);
-    translation_mat(3, 1, y);
-    translation_mat(3, 2, z);
-    translation_mat(3, 3, 1.0f);
-
-    // Phew...
     if (g_gl_state->curr_matrix_mode == GL_MODELVIEW) {
-        g_gl_state->model_view_matrix = g_gl_state->model_view_matrix * translation_mat;
+        g_gl_state->model_view_matrix = g_gl_state->model_view_matrix * FloatMatrix4x4::translate({ x, y, z });
     } else if (g_gl_state->curr_matrix_mode == GL_PROJECTION) {
-        g_gl_state->projection_matrix = g_gl_state->projection_matrix * translation_mat;
+        g_gl_state->projection_matrix = g_gl_state->projection_matrix * FloatMatrix4x4::translate({ x, y, z });
     }
 }

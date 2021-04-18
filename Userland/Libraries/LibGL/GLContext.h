@@ -27,22 +27,22 @@
 
 #include "GL/gl.h"
 #include "GLStruct.h"
-#include "math/mat4.h"
 
 #include <AK/Vector.h>
+#include <LibGfx/Matrix4x4.h>
 
 struct GLContext {
     GLenum curr_draw_mode;
     GLenum curr_matrix_mode;
-    Mat4 projection_matrix;
-    Mat4 model_view_matrix;
+    FloatMatrix4x4 projection_matrix;
+    FloatMatrix4x4 model_view_matrix;
 
-    Vector<Mat4> projection_matrix_stack;
-    Vector<Mat4> model_view_matrix_stack;
+    Vector<FloatMatrix4x4> projection_matrix_stack;
+    Vector<FloatMatrix4x4> model_view_matrix_stack;
 
     color_t clear_color = { 0.0f, 0.0f, 0.0f, 0.0f };
     color_t curr_vertex_color = { 255.0f, 255.0f, 255.0f, 255.0f };
 };
 
 extern GLContext* g_gl_state;
-extern Mat4 g_curr_matrix;
+extern FloatMatrix4x4 g_curr_matrix;
