@@ -4,6 +4,7 @@ set(SOURCES
     GLState.cpp
     GLUtils.cpp
     GLVert.cpp
+    SoftwareGLContext.cpp
 )
 
 serenity_lib(LibGL gl)
