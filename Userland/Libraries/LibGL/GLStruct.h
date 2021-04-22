@@ -23,6 +23,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #pragma once
 
 #include "GL/gl.h"
@@ -35,7 +36,7 @@ typedef struct
 typedef struct
 {
     float x, y, z, w;
-    float r, g, b;
+    float r, g, b, a;
     float u, v;
 } GLVertex;
 
