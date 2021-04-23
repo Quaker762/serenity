@@ -70,10 +70,10 @@ public:
     Vector4<T> operator*(const Vector4<T>& v) const
     {
         return Vector4<T>(
-            v.x() * m_elements[0][0] + v.y() * m_elements[0][1] + v.z() * m_elements[0][2] + v.w() * m_elements[0][3],
-            v.x() * m_elements[1][0] + v.y() * m_elements[1][1] + v.z() * m_elements[1][2] + v.w() * m_elements[1][3],
-            v.x() * m_elements[2][0] + v.y() * m_elements[2][1] + v.z() * m_elements[2][2] + v.w() * m_elements[2][3],
-            v.x() * m_elements[3][0] + v.y() * m_elements[3][1] + v.z() * m_elements[3][2] + v.w() * m_elements[3][3]);
+            v.x() * m_elements[0][0] + v.y() * m_elements[1][0] + v.z() * m_elements[2][0] + v.w() * m_elements[3][0],
+            v.x() * m_elements[0][1] + v.y() * m_elements[1][1] + v.z() * m_elements[2][1] + v.w() * m_elements[3][1],
+            v.x() * m_elements[0][2] + v.y() * m_elements[1][2] + v.z() * m_elements[2][2] + v.w() * m_elements[3][2],
+            v.x() * m_elements[0][3] + v.y() * m_elements[1][3] + v.z() * m_elements[2][3] + v.w() * m_elements[3][3]);
     }
 
     Vector3<T> transform_point(const Vector3<T>& p) const
