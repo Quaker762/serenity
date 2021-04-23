@@ -8,11 +8,13 @@
 #pragma once
 
 #include "GL/gl.h"
+#include <AK/OwnPtr.h>
+#include <LibGfx/Bitmap.h>
 #include <LibGfx/Matrix4x4.h>
 
 class GLContext {
 public:
-    virtual ~GLContext() { }
+    virtual ~GLContext();
 
     virtual void gl_begin(GLenum mode) = 0;
     virtual void gl_clear(GLbitfield mask) = 0;
@@ -36,6 +38,9 @@ public:
     virtual void gl_disable(GLenum) = 0;
     virtual void gl_front_face(GLenum) = 0;
     virtual void gl_cull_face(GLenum) = 0;
+
+    virtual void present() = 0;
 };
 
-extern GLContext* g_gl_context;
+OwnPtr<GLContext> gl_create_context(Gfx::Bitmap&);
+void gl_make_context_current(GLContext*);

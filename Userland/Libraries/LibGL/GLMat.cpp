@@ -8,6 +8,8 @@
 #include "GL/gl.h"
 #include "GLContext.h"
 
+extern GLContext* g_gl_context;
+
 void glMatrixMode(GLenum mode)
 {
     g_gl_context->gl_matrix_mode(mode);

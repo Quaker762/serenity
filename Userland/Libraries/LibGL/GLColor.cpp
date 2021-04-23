@@ -8,6 +8,8 @@
 #include "GL/gl.h"
 #include "GLContext.h"
 
+extern GLContext* g_gl_context;
+
 void glColor3f(GLfloat r, GLfloat g, GLfloat b)
 {
     g_gl_context->gl_color(r, g, b, 1.0);
