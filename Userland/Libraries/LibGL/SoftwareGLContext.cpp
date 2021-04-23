@@ -132,7 +132,13 @@ static void clip_triangle_against_frustum(Vector<FloatVector4>& in_vec)
 
 void SoftwareGLContext::gl_begin(GLenum mode)
 {
+    if (mode < GL_TRIANGLES || mode > GL_POLYGON) {
+        m_error = GL_INVALID_ENUM;
+        return;
+    }
+
     m_current_draw_mode = mode;
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_clear(GLbitfield mask)
@@ -144,21 +150,22 @@ void SoftwareGLContext::gl_clear(GLbitfield mask)
 
         uint64_t color = r << 16 | g << 8 | b;
         (void)(color);
-        //rush3d_register_write(BACK_COLOR_REGISTER, color);
-        //rush3d_register_write(CONTROL_STATUS_REGISTER_WRITE, CLEAR_FRAMEBUFFER);
+        m_error = GL_NO_ERROR;
     } else {
-        // set gl error here!?
+        m_error = GL_INVALID_ENUM;
     }
 }
 
 void SoftwareGLContext::gl_clear_color(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
     m_clear_color = { red, green, blue, alpha };
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_color(GLdouble r, GLdouble g, GLdouble b, GLdouble a)
 {
     m_current_vertex_color = { (float)r, (float)g, (float)b, (float)a };
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_end()
@@ -223,7 +230,8 @@ void SoftwareGLContext::gl_end()
             triangle_list.append(triangle);
         }
     } else {
-        VERIFY_NOT_REACHED();
+        m_error = GL_INVALID_ENUM;
+        return;
     }
 
     // Now let's transform each triangle and send that to the GPU
@@ -380,6 +388,8 @@ void SoftwareGLContext::gl_end()
     triangle_list.clear();
     processed_triangles.clear();
     vertex_list.clear();
+
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearVal, GLdouble farVal)
@@ -410,6 +420,13 @@ void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble botto
 #endif
         m_projection_matrix = m_model_view_matrix * frustum;
     }
+
+    m_error = GL_NO_ERROR;
+}
+
+GLenum SoftwareGLContext::gl_get_error()
+{
+    return m_error;
 }
 
 GLubyte* SoftwareGLContext::gl_get_string(GLenum name)
@@ -428,7 +445,7 @@ GLubyte* SoftwareGLContext::gl_get_string(GLenum name)
         break;
     }
 
-    // TODO: Set glError to GL_INVALID_ENUM here
+    m_error = GL_INVALID_ENUM;
     return nullptr;
 }
 
@@ -440,12 +457,19 @@ void SoftwareGLContext::gl_load_identity()
         m_model_view_matrix = FloatMatrix4x4::identity();
     else
         VERIFY_NOT_REACHED();
+
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_matrix_mode(GLenum mode)
 {
-    VERIFY(mode == GL_MODELVIEW || mode == GL_PROJECTION);
+    if (mode < GL_MODELVIEW || mode > GL_PROJECTION) {
+        m_error = GL_INVALID_ENUM;
+        return;
+    }
+
     m_current_matrix_mode = mode;
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_push_matrix()
@@ -463,8 +487,10 @@ void SoftwareGLContext::gl_push_matrix()
         break;
     default:
         dbgln("glPushMatrix(): Attempt to push matrix with invalid matrix mode {})", m_current_matrix_mode);
-        break;
+        return;
     }
+
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_pop_matrix()
@@ -473,7 +499,6 @@ void SoftwareGLContext::gl_pop_matrix()
     dbgln("glPopMatrix(): Popping matrix from matrix stack (matrix_mode = {})", m_current_matrix_mode);
 #endif
 
-    // TODO: Make sure stack::top() doesn't cause any  nasty issues if it's empty (that could result in a lockup/hang)
     switch (m_current_matrix_mode) {
     case GL_PROJECTION:
         m_projection_matrix = m_projection_matrix_stack.take_last();
@@ -483,8 +508,11 @@ void SoftwareGLContext::gl_pop_matrix()
         break;
     default:
         dbgln("glPopMatrix(): Attempt to pop matrix with invalid matrix mode, {}", m_current_matrix_mode);
-        break;
+        m_error = GL_INVALID_ENUM;
+        return;
     }
+
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_rotate(GLdouble angle, GLdouble x, GLdouble y, GLdouble z)
@@ -497,6 +525,8 @@ void SoftwareGLContext::gl_rotate(GLdouble angle, GLdouble x, GLdouble y, GLdoub
         m_model_view_matrix = m_model_view_matrix * rotation_mat;
     else if (m_current_matrix_mode == GL_PROJECTION)
         m_projection_matrix = m_projection_matrix * rotation_mat;
+
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_translate(GLdouble x, GLdouble y, GLdouble z)
@@ -506,6 +536,8 @@ void SoftwareGLContext::gl_translate(GLdouble x, GLdouble y, GLdouble z)
     } else if (m_current_matrix_mode == GL_PROJECTION) {
         m_projection_matrix = m_projection_matrix * FloatMatrix4x4::translate({ (float)x, (float)y, (float)z });
     }
+
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_vertex(GLdouble x, GLdouble y, GLdouble z, GLdouble w)
@@ -527,6 +559,7 @@ void SoftwareGLContext::gl_vertex(GLdouble x, GLdouble y, GLdouble z, GLdouble w
     vertex.v = 0.0f;
 
     vertex_list.append(vertex);
+    m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_viewport(GLint x, GLint y, GLsizei width, GLsizei height)
@@ -535,4 +568,5 @@ void SoftwareGLContext::gl_viewport(GLint x, GLint y, GLsizei width, GLsizei hei
     (void)(y);
     (void)(width);
     (void)(height);
+    m_error = GL_NO_ERROR;
 }
