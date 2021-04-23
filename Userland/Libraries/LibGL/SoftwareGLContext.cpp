@@ -416,27 +416,23 @@ void SoftwareGLContext::gl_end()
     m_error = GL_NO_ERROR;
 }
 
-void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearVal, GLdouble farVal)
+void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble near_val, GLdouble far_val)
 {
-    float a;
-    float b;
-    float c;
-    float d;
-
     if (m_in_draw_state) {
         m_error = GL_INVALID_OPERATION;
         return;
     }
 
     // Let's do some math!
-    a = ((float)right + (float)left) / ((float)right - (float)left);
-    b = ((float)top + (float)bottom) / ((float)top - (float)bottom);
-    c = -(((float)farVal + (float)nearVal) / ((float)farVal - (float)nearVal));
-    d = -((2 * ((float)farVal * (float)nearVal)) / ((float)farVal - (float)nearVal));
+    // FIXME: Are we losing too much precision by doing this?
+    float a = static_cast<float>((right + left) / (right - left));
+    float b = static_cast<float>((top + bottom) / (top - bottom));
+    float c = static_cast<float>(-((far_val + near_val) / (far_val - near_val)));
+    float d = static_cast<float>(-((2 * (far_val * near_val)) / (far_val - near_val)));
 
     FloatMatrix4x4 frustum {
-        ((2 * (float)nearVal) / ((float)right - (float)left)), 0, a, 0,
-        0, ((2 * (float)nearVal) / ((float)top - (float)bottom)), b, 0,
+        ((2 * (float)near_val) / ((float)right - (float)left)), 0, a, 0,
+        0, ((2 * (float)near_val) / ((float)top - (float)bottom)), b, 0,
         0, 0, c, d,
         0, 0, -1, 0
     };

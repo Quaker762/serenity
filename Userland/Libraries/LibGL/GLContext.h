@@ -18,7 +18,7 @@ public:
     virtual void gl_clear_color(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha) = 0;
     virtual void gl_color(GLdouble r, GLdouble g, GLdouble b, GLdouble a) = 0;
     virtual void gl_end() = 0;
-    virtual void gl_frustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearVal, GLdouble farVal) = 0;
+    virtual void gl_frustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble near_val, GLdouble far_val) = 0;
     virtual GLenum gl_get_error() = 0;
     virtual GLubyte* gl_get_string(GLenum name) = 0;
     virtual void gl_load_identity() = 0;
