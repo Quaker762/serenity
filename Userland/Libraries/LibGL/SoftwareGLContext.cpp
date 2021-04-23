@@ -8,6 +8,7 @@
 #include "SoftwareGLContext.h"
 #include "GLStruct.h"
 #include <AK/Assertions.h>
+#include <AK/Debug.h>
 #include <AK/Format.h>
 #include <AK/QuickSort.h>
 #include <AK/Vector.h>
@@ -415,9 +416,7 @@ void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble botto
     if (m_current_matrix_mode == GL_PROJECTION) {
         m_projection_matrix = m_projection_matrix * frustum;
     } else if (m_current_matrix_mode == GL_MODELVIEW) {
-#ifdef GL_DEBUG
-        dbgln("glFrustum(): frustum created with curr_matrix_mode == GL_MODELVIEW!!!");
-#endif
+        dbgln_if(GL_DEBUG, "glFrustum(): frustum created with curr_matrix_mode == GL_MODELVIEW!!!");
         m_projection_matrix = m_model_view_matrix * frustum;
     }
 
@@ -439,9 +438,7 @@ GLubyte* SoftwareGLContext::gl_get_string(GLenum name)
     case GL_VERSION:
         return reinterpret_cast<GLubyte*>(const_cast<char*>("OpenGL 1.2 SerenityOS"));
     default:
-#ifdef GL_DEBUG
-        dbgln("glGetString(): Unknown enum name!");
-#endif
+        dbgln_if(GL_DEBUG, "glGetString(): Unknown enum name!");
         break;
     }
 
@@ -474,9 +471,7 @@ void SoftwareGLContext::gl_matrix_mode(GLenum mode)
 
 void SoftwareGLContext::gl_push_matrix()
 {
-#ifdef GL_DEBUG
-    dbgln("glPushMatrix(): Pushing matrix to the matrix stack (matrix_mode {})", m_current_matrix_mode);
-#endif
+    dbgln_if(GL_DEBUG, "glPushMatrix(): Pushing matrix to the matrix stack (matrix_mode {})", m_current_matrix_mode);
 
     switch (m_current_matrix_mode) {
     case GL_PROJECTION:
@@ -486,7 +481,7 @@ void SoftwareGLContext::gl_push_matrix()
         m_model_view_matrix_stack.append(m_model_view_matrix);
         break;
     default:
-        dbgln("glPushMatrix(): Attempt to push matrix with invalid matrix mode {})", m_current_matrix_mode);
+        dbgln_if(GL_DEBUG, "glPushMatrix(): Attempt to push matrix with invalid matrix mode {})", m_current_matrix_mode);
         return;
     }
 
@@ -495,9 +490,7 @@ void SoftwareGLContext::gl_push_matrix()
 
 void SoftwareGLContext::gl_pop_matrix()
 {
-#ifdef GL_DEBUG
-    dbgln("glPopMatrix(): Popping matrix from matrix stack (matrix_mode = {})", m_current_matrix_mode);
-#endif
+    dbgln_if(GL_DEBUG, "glPopMatrix(): Popping matrix from matrix stack (matrix_mode = {})", m_current_matrix_mode);
 
     switch (m_current_matrix_mode) {
     case GL_PROJECTION:
@@ -507,7 +500,7 @@ void SoftwareGLContext::gl_pop_matrix()
         m_model_view_matrix = m_model_view_matrix_stack.take_last();
         break;
     default:
-        dbgln("glPopMatrix(): Attempt to pop matrix with invalid matrix mode, {}", m_current_matrix_mode);
+        dbgln_if(GL_DEBUG, "glPopMatrix(): Attempt to pop matrix with invalid matrix mode, {}", m_current_matrix_mode);
         m_error = GL_INVALID_ENUM;
         return;
     }

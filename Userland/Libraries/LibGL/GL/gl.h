@@ -6,8 +6,6 @@
 
 #pragma once
 
-#define GL_DEBUG
-
 #ifdef __cplusplus
 extern "C" {
 #endif
