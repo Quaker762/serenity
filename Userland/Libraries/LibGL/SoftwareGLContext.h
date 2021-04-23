@@ -7,12 +7,17 @@
 #pragma once
 
 #include "GLContext.h"
+#include "SoftwareRasterizer.h"
+#include <AK/RefPtr.h>
 #include <AK/Vector.h>
+#include <LibGfx/Bitmap.h>
 #include <LibGfx/Matrix4x4.h>
 #include <LibGfx/Vector3.h>
 
 class SoftwareGLContext : public GLContext {
 public:
+    SoftwareGLContext(Gfx::Bitmap&);
+
     virtual void gl_begin(GLenum mode) override;
     virtual void gl_clear(GLbitfield mask) override;
     virtual void gl_clear_color(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha) override;
@@ -37,6 +42,8 @@ public:
     virtual void gl_front_face(GLenum) override;
     virtual void gl_cull_face(GLenum) override;
 
+    virtual void present() override;
+
 private:
     GLenum m_current_draw_mode;
     GLenum m_current_matrix_mode;
@@ -57,4 +64,8 @@ private:
     bool m_cull_faces = false;
     GLenum m_front_face = GL_CCW;
     GLenum m_culled_sides = GL_BACK;
+
+    NonnullRefPtr<Gfx::Bitmap> m_frontbuffer;
+
+    SoftwareRasterizer m_rasterizer;
 };
