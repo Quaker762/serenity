@@ -45,4 +45,5 @@ private:
     FloatVector4 m_current_vertex_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     GLenum m_error = GL_NO_ERROR;
+    bool m_in_draw_state = false;
 };

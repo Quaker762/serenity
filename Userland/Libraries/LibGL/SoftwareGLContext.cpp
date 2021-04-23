@@ -133,17 +133,28 @@ static void clip_triangle_against_frustum(Vector<FloatVector4>& in_vec)
 
 void SoftwareGLContext::gl_begin(GLenum mode)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     if (mode < GL_TRIANGLES || mode > GL_POLYGON) {
         m_error = GL_INVALID_ENUM;
         return;
     }
 
     m_current_draw_mode = mode;
+    m_in_draw_state = true; // Certain commands will now generate an error
     m_error = GL_NO_ERROR;
 }
 
 void SoftwareGLContext::gl_clear(GLbitfield mask)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     if (mask & GL_COLOR_BUFFER_BIT) {
         uint8_t r = static_cast<uint8_t>(floor(m_clear_color.x() * 255.0f));
         uint8_t g = static_cast<uint8_t>(floor(m_clear_color.y() * 255.0f));
@@ -159,6 +170,11 @@ void SoftwareGLContext::gl_clear(GLbitfield mask)
 
 void SoftwareGLContext::gl_clear_color(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     m_clear_color = { red, green, blue, alpha };
     m_error = GL_NO_ERROR;
 }
@@ -184,6 +200,12 @@ void SoftwareGLContext::gl_end()
     // FIXME: Don't assume screen dimensions
     float scr_width = 640.0f;
     float scr_height = 480.0f;
+
+    // Make sure we had a `glBegin` before this call...
+    if (!m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
 
     // Let's construct some triangles
     if (m_current_draw_mode == GL_TRIANGLES) {
@@ -390,6 +412,7 @@ void SoftwareGLContext::gl_end()
     processed_triangles.clear();
     vertex_list.clear();
 
+    m_in_draw_state = false;
     m_error = GL_NO_ERROR;
 }
 
@@ -399,6 +422,11 @@ void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble botto
     float b;
     float c;
     float d;
+
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
 
     // Let's do some math!
     a = ((float)right + (float)left) / ((float)right - (float)left);
@@ -425,11 +453,20 @@ void SoftwareGLContext::gl_frustum(GLdouble left, GLdouble right, GLdouble botto
 
 GLenum SoftwareGLContext::gl_get_error()
 {
+    if (m_in_draw_state) {
+        return GL_INVALID_OPERATION;
+    }
+
     return m_error;
 }
 
 GLubyte* SoftwareGLContext::gl_get_string(GLenum name)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return nullptr;
+    }
+
     switch (name) {
     case GL_VENDOR:
         return reinterpret_cast<GLubyte*>(const_cast<char*>("The SerenityOS Developers"));
@@ -448,6 +485,11 @@ GLubyte* SoftwareGLContext::gl_get_string(GLenum name)
 
 void SoftwareGLContext::gl_load_identity()
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     if (m_current_matrix_mode == GL_PROJECTION)
         m_projection_matrix = FloatMatrix4x4::identity();
     else if (m_current_matrix_mode == GL_MODELVIEW)
@@ -460,6 +502,11 @@ void SoftwareGLContext::gl_load_identity()
 
 void SoftwareGLContext::gl_matrix_mode(GLenum mode)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     if (mode < GL_MODELVIEW || mode > GL_PROJECTION) {
         m_error = GL_INVALID_ENUM;
         return;
@@ -471,6 +518,11 @@ void SoftwareGLContext::gl_matrix_mode(GLenum mode)
 
 void SoftwareGLContext::gl_push_matrix()
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     dbgln_if(GL_DEBUG, "glPushMatrix(): Pushing matrix to the matrix stack (matrix_mode {})", m_current_matrix_mode);
 
     switch (m_current_matrix_mode) {
@@ -490,6 +542,11 @@ void SoftwareGLContext::gl_push_matrix()
 
 void SoftwareGLContext::gl_pop_matrix()
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     dbgln_if(GL_DEBUG, "glPopMatrix(): Popping matrix from matrix stack (matrix_mode = {})", m_current_matrix_mode);
 
     switch (m_current_matrix_mode) {
@@ -510,6 +567,11 @@ void SoftwareGLContext::gl_pop_matrix()
 
 void SoftwareGLContext::gl_rotate(GLdouble angle, GLdouble x, GLdouble y, GLdouble z)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     FloatVector3 axis = { (float)x, (float)y, (float)z };
     axis.normalize();
     auto rotation_mat = FloatMatrix4x4::rotate(axis, angle);
@@ -524,6 +586,11 @@ void SoftwareGLContext::gl_rotate(GLdouble angle, GLdouble x, GLdouble y, GLdoub
 
 void SoftwareGLContext::gl_translate(GLdouble x, GLdouble y, GLdouble z)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     if (m_current_matrix_mode == GL_MODELVIEW) {
         m_model_view_matrix = m_model_view_matrix * FloatMatrix4x4::translate({ (float)x, (float)y, (float)z });
     } else if (m_current_matrix_mode == GL_PROJECTION) {
@@ -557,6 +624,11 @@ void SoftwareGLContext::gl_vertex(GLdouble x, GLdouble y, GLdouble z, GLdouble w
 
 void SoftwareGLContext::gl_viewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
+    if (m_in_draw_state) {
+        m_error = GL_INVALID_OPERATION;
+        return;
+    }
+
     (void)(x);
     (void)(y);
     (void)(width);
