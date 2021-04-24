@@ -64,3 +64,8 @@ void glFrustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLd
 {
     g_gl_context->gl_frustum(left, right, bottom, top, nearVal, farVal);
 }
+
+void glOrtho(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearVal, GLdouble farVal)
+{
+    g_gl_context->gl_ortho(left, right, bottom, top, nearVal, farVal);
+}
