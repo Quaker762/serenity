@@ -33,6 +33,17 @@ void glPopMatrix()
     g_gl_context->gl_pop_matrix();
 }
 
+void glLoadMatrixf(const GLfloat* matrix)
+{
+    FloatMatrix4x4 mat(
+        matrix[0], matrix[4], matrix[8], matrix[12],
+        matrix[1], matrix[5], matrix[9], matrix[13],
+        matrix[2], matrix[6], matrix[10], matrix[14],
+        matrix[3], matrix[7], matrix[11], matrix[15]);
+
+    g_gl_context->gl_load_matrix(mat);
+}
+
 void glLoadIdentity()
 {
     g_gl_context->gl_load_identity();
