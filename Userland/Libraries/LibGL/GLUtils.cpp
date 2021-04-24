@@ -8,6 +8,28 @@
 #include "GL/gl.h"
 #include "GLContext.h"
 
+extern GLContext* g_gl_context;
+
+void glEnable(GLenum cap)
+{
+    g_gl_context->gl_enable(cap);
+}
+
+void glDisable(GLenum cap)
+{
+    g_gl_context->gl_disable(cap);
+}
+
+void glFrontFace(GLenum mode)
+{
+    g_gl_context->gl_front_face(mode);    
+}
+
+void glCullFace(GLenum mode)
+{
+    g_gl_context->gl_cull_face(mode);    
+}
+
 void glClear(GLbitfield mask)
 {
     g_gl_context->gl_clear(mask);
