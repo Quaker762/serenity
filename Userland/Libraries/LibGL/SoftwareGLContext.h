@@ -14,6 +14,8 @@
 #include <LibGfx/Matrix4x4.h>
 #include <LibGfx/Vector3.h>
 
+namespace GL {
+
 class SoftwareGLContext : public GLContext {
 public:
     SoftwareGLContext(Gfx::Bitmap&);
@@ -69,3 +71,5 @@ private:
 
     SoftwareRasterizer m_rasterizer;
 };
+
+}

@@ -9,6 +9,7 @@
 #include <AK/SIMD.h>
 #include <LibGfx/Painter.h>
 
+namespace GL {
 static constexpr size_t RASTERIZER_BLOCK_SIZE = 16;
 
 using AK::SIMD::f32x4;
@@ -49,7 +50,7 @@ static void rasterize_triangle(Gfx::Bitmap& render_target, const GLTriangle& tri
     if (area == 0)
         return;
 
-    float oneOverArea = 1 / area;
+    float one_over_area = 1 / area;
 
     // Obey top-left rule:
     // This sets up "zero" for later pixel coverage tests.
@@ -66,12 +67,12 @@ static void rasterize_triangle(Gfx::Bitmap& render_target, const GLTriangle& tri
         zero[1] = 0;
 
     // This function calculates the barycentric coordinates for the pixel relative to the triangle.
-    auto barycentric_coordinates = [v0, v1, v2, oneOverArea](float x, float y) -> f32x4 {
+    auto barycentric_coordinates = [v0, v1, v2, one_over_area](float x, float y) -> f32x4 {
         FloatVector2 p { x, y };
         return f32x4 {
-            triangle_area(v1, v2, p) * oneOverArea,
-            triangle_area(v2, v0, p) * oneOverArea,
-            triangle_area(v0, v1, p) * oneOverArea,
+            triangle_area(v1, v2, p) * one_over_area,
+            triangle_area(v2, v0, p) * one_over_area,
+            triangle_area(v0, v1, p) * one_over_area,
             0.0f
         };
     };
@@ -252,4 +253,5 @@ void SoftwareRasterizer::set_options(const RasterizerOptions& options)
     m_options = options;
 
     // FIXME: Recreate or reinitialize render threads here when multithreading is being implemented
+}
 }
