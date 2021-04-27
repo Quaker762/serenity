@@ -7,6 +7,7 @@
 #pragma once
 
 #include "GLContext.h"
+#include "GLStruct.h"
 #include "SoftwareRasterizer.h"
 #include <AK/RefPtr.h>
 #include <AK/Vector.h>
@@ -68,6 +69,10 @@ private:
     GLenum m_culled_sides = GL_BACK;
 
     NonnullRefPtr<Gfx::Bitmap> m_frontbuffer;
+
+    Vector<GLVertex> vertex_list;
+    Vector<GLTriangle> triangle_list;
+    Vector<GLTriangle> processed_triangles;
 
     SoftwareRasterizer m_rasterizer;
 };

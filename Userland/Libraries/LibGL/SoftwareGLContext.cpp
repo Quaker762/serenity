@@ -22,12 +22,7 @@ using AK::dbgln;
 
 namespace GL {
 
-// static std::list<R3D_Triangle> triangle_list;
-static Vector<GLVertex> vertex_list;
-static Vector<GLTriangle> triangle_list;
-static Vector<GLTriangle> processed_triangles;
-
-#define NUM_CLIP_PLANES 6
+static constexpr size_t NUM_CLIP_PLANES = 6;
 
 static FloatVector4 clip_planes[] = {
     { -1, 0, 0, 1 }, // Left Plane
@@ -107,7 +102,7 @@ static FloatVector4 clip_intersection_point(const FloatVector4& vec, const Float
 static void clip_triangle_against_frustum(Vector<FloatVector4>& in_vec)
 {
     Vector<FloatVector4> clipped_polygon = in_vec; // in_vec = subjectPolygon, clipped_polygon = outputList
-    for (int i = 0; i < NUM_CLIP_PLANES; i++)      // Test against each clip plane
+    for (size_t i = 0; i < NUM_CLIP_PLANES; i++)   // Test against each clip plane
     {
         ClippingPlane plane = static_cast<ClippingPlane>(i); // Hahaha, what the fuck
         in_vec = clipped_polygon;
