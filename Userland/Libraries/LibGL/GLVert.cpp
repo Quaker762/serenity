@@ -8,7 +8,7 @@
 #include "GL/gl.h"
 #include "GLContext.h"
 
-extern GLContext* g_gl_context;
+extern GL::GLContext* g_gl_context;
 
 void glBegin(GLenum mode)
 {

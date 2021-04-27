@@ -10,6 +10,8 @@
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/Vector4.h>
 
+namespace GL {
+
 struct RasterizerOptions {
     bool shade_smooth { false };
 };
@@ -31,3 +33,4 @@ private:
     RefPtr<Gfx::Bitmap> m_render_target;
     RasterizerOptions m_options;
 };
+}

@@ -28,27 +28,27 @@
 
 #include "GL/gl.h"
 
-typedef struct
-{
+namespace GL {
+
+struct GLColor {
     GLclampf r, g, b, a;
-} color_t;
+};
 
-typedef struct
-{
-    float x, y, z, w;
-    float r, g, b, a;
-    float u, v;
-} GLVertex;
+struct GLVertex {
+    GLfloat x, y, z, w;
+    GLfloat r, g, b, a;
+    GLfloat u, v;
+};
 
-typedef struct
-{
+struct GLTriangle {
     GLVertex vertices[3];
-} GLTriangle;
+};
 
-typedef struct
-{
-    float x1;
-    float y1;
-    float x2;
-    float y2;
-} GLEdge;
+struct GLEdge {
+    GLfloat x1;
+    GLfloat y1;
+    GLfloat x2;
+    GLfloat y2;
+};
+
+}

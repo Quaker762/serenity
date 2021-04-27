@@ -12,6 +12,8 @@
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/Matrix4x4.h>
 
+namespace GL {
+
 class GLContext {
 public:
     virtual ~GLContext();
@@ -43,5 +45,7 @@ public:
     virtual void present() = 0;
 };
 
-OwnPtr<GLContext> gl_create_context(Gfx::Bitmap&);
-void gl_make_context_current(GLContext*);
+OwnPtr<GLContext> create_context(Gfx::Bitmap&);
+void make_context_current(GLContext*);
+
+}

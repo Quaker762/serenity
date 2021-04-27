@@ -20,6 +20,8 @@
 
 using AK::dbgln;
 
+namespace GL {
+
 // static std::list<R3D_Triangle> triangle_list;
 static Vector<GLVertex> vertex_list;
 static Vector<GLTriangle> triangle_list;
@@ -764,4 +766,6 @@ void SoftwareGLContext::gl_cull_face(GLenum cull_mode)
 void SoftwareGLContext::present()
 {
     m_rasterizer.blit_to(*m_frontbuffer);
+}
+
 }
