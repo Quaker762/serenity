@@ -8,8 +8,9 @@
 #include "SoftwareGLContext.h"
 #include <LibGfx/Bitmap.h>
 
+__attribute__((visibility("hidden"))) GL::GLContext* g_gl_context;
+
 namespace GL {
-__attribute__((visibility("hidden"))) GLContext* g_gl_context;
 
 GLContext::~GLContext()
 {
