@@ -28,6 +28,8 @@
 
 #include "GL/gl.h"
 
+namespace GL {
+
 struct GLColor {
     GLclampf r, g, b, a;
 };
@@ -48,3 +50,4 @@ struct GLEdge {
     GLfloat x2;
     GLfloat y2;
 };
+}
