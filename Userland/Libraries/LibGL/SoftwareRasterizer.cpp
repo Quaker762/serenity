@@ -6,13 +6,10 @@
 
 #include "SoftwareRasterizer.h"
 #include <AK/Function.h>
-#include <AK/SIMD.h>
 #include <LibGfx/Painter.h>
 
 namespace GL {
 static constexpr size_t RASTERIZER_BLOCK_SIZE = 16;
-
-using AK::SIMD::f32x4;
 
 struct FloatVector2 {
     float x;
@@ -24,12 +21,13 @@ constexpr static float triangle_area(const FloatVector2& a, const FloatVector2& 
     return ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / 2;
 }
 
-constexpr static Gfx::RGBA32 to_rgba32(f32x4 v)
+static Gfx::RGBA32 to_rgba32(const FloatVector4& v)
 {
-    u8 r = clamp(v[0], 0.0f, 1.0f) * 255;
-    u8 g = clamp(v[1], 0.0f, 1.0f) * 255;
-    u8 b = clamp(v[2], 0.0f, 1.0f) * 255;
-    u8 a = clamp(v[3], 0.0f, 1.0f) * 255;
+    auto clamped = v.clamped(0, 1);
+    u8 r = clamped.x() * 255;
+    u8 g = clamped.y() * 255;
+    u8 b = clamped.z() * 255;
+    u8 a = clamped.w() * 255;
     return a << 24 | b << 16 | g << 8 | r;
 }
 
@@ -58,18 +56,18 @@ static void rasterize_triangle(Gfx::Bitmap& render_target, const GLTriangle& tri
     // it is either tested against 0 or float epsilon, effectively
     // turning "< 0" into "<= 0"
     float constexpr epsilon = AK::NumericLimits<float>::epsilon();
-    f32x4 zero { epsilon, epsilon, epsilon, 0.0f };
+    FloatVector4 zero { epsilon, epsilon, epsilon, 0.0f };
     if (v1.y > v0.y || (v1.y == v0.y && v1.x < v0.x))
-        zero[2] = 0;
+        zero.set_z(0);
     if (v2.y > v1.y || (v2.y == v1.y && v2.x < v1.x))
-        zero[0] = 0;
+        zero.set_x(0);
     if (v0.y > v2.y || (v0.y == v2.y && v0.x < v2.x))
-        zero[1] = 0;
+        zero.set_y(0);
 
     // This function calculates the barycentric coordinates for the pixel relative to the triangle.
-    auto barycentric_coordinates = [v0, v1, v2, one_over_area](float x, float y) -> f32x4 {
+    auto barycentric_coordinates = [v0, v1, v2, one_over_area](float x, float y) -> FloatVector4 {
         FloatVector2 p { x, y };
-        return f32x4 {
+        return {
             triangle_area(v1, v2, p) * one_over_area,
             triangle_area(v2, v0, p) * one_over_area,
             triangle_area(v0, v1, p) * one_over_area,
@@ -78,10 +76,10 @@ static void rasterize_triangle(Gfx::Bitmap& render_target, const GLTriangle& tri
     };
 
     // This function tests whether a point lies within the triangle
-    auto test_point = [zero](f32x4 point) -> bool {
-        return point[0] >= zero[0]
-            && point[1] >= zero[1]
-            && point[2] >= zero[2];
+    auto test_point = [zero](const FloatVector4& point) -> bool {
+        return point.x() >= zero.x()
+            && point.y() >= zero.y()
+            && point.z() >= zero.z();
     };
 
     // Calculate bounds
@@ -137,9 +135,9 @@ static void rasterize_triangle(Gfx::Bitmap& render_target, const GLTriangle& tri
             auto d = barycentric_coordinates(x1, y1);
 
             // If the whole block is outside any of the triangle edges we can discard it completely
-            if ((a[0] < zero[0] && b[0] < zero[0] && c[0] < zero[0] && d[0] < zero[0])
-                || (a[1] < zero[1] && b[1] < zero[1] && c[1] < zero[1] && d[1] < zero[1])
-                || (a[2] < zero[2] && b[2] < zero[2] && c[2] < zero[2] && d[2] < zero[2]))
+            if ((a.x() < zero.x() && b.x() < zero.x() && c.x() < zero.x() && d.x() < zero.x())
+                || (a.y() < zero.y() && b.y() < zero.y() && c.y() < zero.y() && d.y() < zero.y())
+                || (a.z() < zero.z() && b.z() < zero.z() && c.z() < zero.z() && d.z() < zero.z()))
                 continue;
 
             // barycentric coordinate derrivatives
@@ -193,16 +191,16 @@ SoftwareRasterizer::SoftwareRasterizer(const Gfx::IntSize& min_size)
 void SoftwareRasterizer::submit_triangle(const GLTriangle& triangle)
 {
     if (m_options.shade_smooth) {
-        rasterize_triangle(*m_render_target, triangle, [](f32x4 v, const GLTriangle& t) -> f32x4 {
-            const float r = t.vertices[0].r * v[0] + t.vertices[1].r * v[1] + t.vertices[2].r * v[2];
-            const float g = t.vertices[0].g * v[0] + t.vertices[1].g * v[1] + t.vertices[2].g * v[2];
-            const float b = t.vertices[0].b * v[0] + t.vertices[1].b * v[1] + t.vertices[2].b * v[2];
-            const float a = t.vertices[0].a * v[0] + t.vertices[1].a * v[1] + t.vertices[2].a * v[2];
-            return f32x4 { r, g, b, a };
+        rasterize_triangle(*m_render_target, triangle, [](const FloatVector4& v, const GLTriangle& t) -> FloatVector4 {
+            const float r = t.vertices[0].r * v.x() + t.vertices[1].r * v.y() + t.vertices[2].r * v.z();
+            const float g = t.vertices[0].g * v.x() + t.vertices[1].g * v.y() + t.vertices[2].g * v.z();
+            const float b = t.vertices[0].b * v.x() + t.vertices[1].b * v.y() + t.vertices[2].b * v.z();
+            const float a = t.vertices[0].a * v.x() + t.vertices[1].a * v.y() + t.vertices[2].a * v.z();
+            return { r, g, b, a };
         });
     } else {
-        rasterize_triangle(*m_render_target, triangle, [](f32x4, const GLTriangle& t) -> f32x4 {
-            return f32x4 { t.vertices[0].r, t.vertices[0].g, t.vertices[0].b, t.vertices[0].a };
+        rasterize_triangle(*m_render_target, triangle, [](const FloatVector4&, const GLTriangle& t) -> FloatVector4 {
+            return { t.vertices[0].r, t.vertices[0].g, t.vertices[0].b, t.vertices[0].a };
         });
     }
 }
