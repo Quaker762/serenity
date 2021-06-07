@@ -31,7 +31,9 @@ public:
 
 public:
     static void create(PortNumber port, DeviceSpeed speed);
+
     static USBDevice* get(PortNumber port);
+    static const USBDevice* get_device_from_id(u8 device_id);
 
     USBDevice(PortNumber port, DeviceSpeed speed);
     ~USBDevice();

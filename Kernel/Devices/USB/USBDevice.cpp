@@ -16,10 +16,32 @@ static u32 s_next_usb_address = 1; // Next address we hand out to a device once 
 
 namespace Kernel::USB {
 
+static Array<USBDevice*, 2> s_devices;
+
 void USBDevice::create(PortNumber port, DeviceSpeed speed)
 {
-    USBDevice device(port, speed);
-    device.enumerate();
+    auto device = new USBDevice(port, speed);
+    device->enumerate();
+    s_devices.at(static_cast<u8>(port)) = device;
+}
+
+USBDevice* USBDevice::get(PortNumber port)
+{
+    VERIFY(port <= PortNumber::Port2);
+    return s_devices.at(static_cast<u8>(port));
+}
+
+const USBDevice* USBDevice::get_device_from_id(u8 device_address)
+{
+    for (auto* const device : s_devices) {
+        if (!device)
+            continue;
+
+        if (device->address() == device_address)
+            return device;
+    }
+
+    return nullptr;
 }
 
 USBDevice::USBDevice(PortNumber port, DeviceSpeed speed)
