@@ -89,6 +89,9 @@ void USBDevice::enumerate()
     m_default_pipe->control_transfer(USB_DEVICE_REQUEST_HOST_TO_DEVICE, USB_REQUEST_SET_ADDRESS, s_next_usb_address, 0, 0, nullptr);
     VERIFY(transfer_length > 0);
     m_address = s_next_usb_address++;
+
+    // Copy the device descriptor
+    memcpy(&m_device_descriptor, &dev_descriptor, sizeof(USBDeviceDescriptor));
 }
 
 USBDevice::~USBDevice()

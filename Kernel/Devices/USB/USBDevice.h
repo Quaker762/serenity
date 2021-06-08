@@ -45,17 +45,17 @@ public:
 
     u8 address() const { return m_address; }
 
+    const USBDeviceDescriptor& device_descriptor() const { return m_device_descriptor; }
+
 private:
 private:
-    PortNumber m_device_port;   // What port is this device attached to
-    DeviceSpeed m_device_speed; // What speed is this device running at
-    u8 m_address;               // USB address assigned to this device
+    PortNumber m_device_port;                   // What port is this device attached to
+    DeviceSpeed m_device_speed;                 // What speed is this device running at
+    u8 m_address;                               // USB address assigned to this device
 
-    // Device description
-    u16 m_vendor_id;  // This device's vendor ID assigned by the USB group
-    u16 m_product_id; // This device's product ID assigned by the USB group
+    USBDeviceDescriptor m_device_descriptor;    // Device Descriptor obtained from USB Device
 
-    OwnPtr<USBPipe> m_default_pipe; // Default communication pipe (endpoint0) used during enumeration
+    OwnPtr<USBPipe> m_default_pipe;             // Default communication pipe (endpoint0) used during enumeration
 };
 
 }
