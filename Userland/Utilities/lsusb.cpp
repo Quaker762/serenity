@@ -12,10 +12,11 @@
 #include <LibCore/ArgsParser.h>
 #include <LibCore/DirIterator.h>
 #include <LibCore/File.h>
+#include <LibUSBDB/Database.h>
 #include <stdio.h>
 #include <unistd.h>
 
-static const char* format = "Device {}: ID {:04x}:{:04x}";
+static const char* format = "Device {}: ID {:04x}:{:04x} {} {}";
 
 int main(int argc, char** argv)
 {
@@ -30,11 +31,22 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    if (unveil("/res/usb.ids", "r") < 0) {
+        perror("unveil");
+        return 1;
+    }
+
     Core::ArgsParser args;
     args.set_general_help("List USB devices.");
     args.parse(argc, argv);
 
     Core::DirIterator usb_devices("/proc/bus/usb", Core::DirIterator::SkipDots);
+
+    RefPtr<USBDB::Database> usb_db = USBDB::Database::open();
+    if (!usb_db) {
+        dbgln("ruh roh!");
+        warnln("Failed to open usb.ids");
+    }
 
     while (usb_devices.has_next()) {
         auto full_path = LexicalPath(usb_devices.next_full_path());
@@ -50,13 +62,18 @@ int main(int argc, char** argv)
         auto json = JsonValue::from_string(contents);
         VERIFY(json.has_value());
 
-        json.value().as_array().for_each([bus_id](auto& value) {
+        json.value().as_array().for_each([bus_id, usb_db](auto& value) {
             auto& device_descriptor = value.as_object();
 
             auto vendor_id = device_descriptor.get("vendor_id").to_u32();
             auto product_id = device_descriptor.get("product_id").to_u32();
 
-            outln(format, bus_id, vendor_id, product_id);
+            StringView vendor_string = usb_db->get_vendor(vendor_id);
+            StringView device_string = usb_db->get_device(vendor_id, product_id);
+            if (device_string.is_empty())
+                device_string = "Unknown Device";
+
+            outln(format, bus_id, vendor_id, product_id, vendor_string, device_string);
         });
     }
 
