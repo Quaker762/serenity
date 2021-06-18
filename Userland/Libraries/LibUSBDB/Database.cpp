@@ -161,7 +161,7 @@ int Database::init()
             if (line[0] != '\t') {
                 commit_vendor();
                 current_vendor = make<Vendor>();
-                current_vendor->id = AK::StringUtils::convert_to_uint_from_hex<u16>(line).value_or(0);
+                current_vendor->id = AK::StringUtils::convert_to_uint_from_hex<u16>(line.substring_view(0, 4)).value_or(0);
                 current_vendor->name = line.substring_view(6, line.length() - 6);
             } else if (line[0] == '\t' && line[1] != '\t') {
                 commit_device();
