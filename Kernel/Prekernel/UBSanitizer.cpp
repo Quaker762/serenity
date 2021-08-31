@@ -6,7 +6,9 @@
  */
 
 #include <AK/UBSanitizer.h>
+#ifndef __aarch64__
 #include <Kernel/Arch/x86/Processor.h>
+#endif
 #include <Kernel/KSyms.h>
 
 using namespace AK::UBSanitizer;
@@ -17,7 +19,11 @@ extern "C" {
 
 static void print_location(const SourceLocation&)
 {
+#ifndef __aarch64__
     asm volatile("cli; hlt");
+#else
+    asm volatile("wfi;b .");
+#endif
 }
 
 void __ubsan_handle_load_invalid_value(const InvalidValueData&, ValueHandle) __attribute__((used));
