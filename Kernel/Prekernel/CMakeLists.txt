@@ -4,6 +4,8 @@ if ("${SERENITY_ARCH}" STREQUAL "aarch64")
     set(SOURCES
         ${SOURCES}
         Arch/aarch64/boot.S
+        Arch/aarch64/init.cpp
+        UBSanitizer.cpp
     )
 else()
     set(SOURCES

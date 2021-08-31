@@ -17,6 +17,9 @@ stack_bottom:
 .skip 32768
 stack_top:
 
+.extern init
+.type init, @function
+
 .text
 
 .global start
@@ -44,7 +47,8 @@ start:
 el1_entry:
   adr x0, stack_top
   mov sp, x0
-  bl Lhalt
+
+  b init
 
 /**
  * EL1 mode switch
