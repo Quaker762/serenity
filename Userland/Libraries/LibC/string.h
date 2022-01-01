@@ -11,6 +11,17 @@
 
 __BEGIN_DECLS
 
+// There are a few C Standard Libraries that have completely broken the standard
+// and include <strings.h> inside <string.h>. This means that certain pieces
+// of software expect functions in <strings.h> to be available by including
+// <string.h>...
+// Considering that we'd rather be "on-spec" rather than compatible, let's
+// hide this behind a macro that can be used per port instead of leaking the
+// prototypes into the namespace as part of <string.h>
+#ifdef __STRINGS_H_COMPAT_HACK
+#include <strings.h>
+#endif
+
 size_t strlen(const char*);
 size_t strnlen(const char*, size_t maxlen);
 
