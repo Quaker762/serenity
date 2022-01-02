@@ -2,6 +2,7 @@
  * Copyright (c) 2020, Itamar S. <itamar8910@gmail.com>
  * Copyright (c) 2021, Andreas Kling <kling@serenityos.org>
  * Copyright (c) 2021, the SerenityOS developers.
+ * Copyright (c) 2022, Jesse Buhagiar <jooster669@gmail.com>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -52,6 +53,7 @@ static __pthread_mutex_t s_loader_lock = __PTHREAD_MUTEX_INITIALIZER;
 
 static bool s_allowed_to_check_environment_variables { false };
 static bool s_do_breakpoint_trap_before_entry { false };
+static char* s_ld_library_path { nullptr };
 
 static Result<void, DlErrorMessage> __dlclose(void* handle);
 static Result<void*, DlErrorMessage> __dlopen(const char* filename, int flags);
@@ -108,7 +110,22 @@ static Result<NonnullRefPtr<DynamicLoader>, DlErrorMessage> map_library(const St
         return map_library(name, fd);
     }
 
-    // TODO: Do we want to also look for libs in other paths too?
+    // Scan the LD_LIBRARY_PATH envvar if it exists or we're not a SUID program
+    if (s_ld_library_path != nullptr) {
+        auto paths = StringView{s_ld_library_path}.split_view(':');
+        for (const auto& search_path : paths) {
+            StringBuilder path_builder;
+            path_builder.append(search_path);
+            path_builder.append(name);
+            int fd = open(path_builder.to_string().characters(), O_RDONLY);
+            if (fd < 0)
+                continue;
+            return map_library(name, fd);
+        }
+    }
+
+    // Now check the default paths. The manpage for `dlopen()` state we should
+    // check /lib and then `/usr/lib`, however we don't have a `/lib` directory yet.
     const char* search_paths[] = { "/usr/lib/{}", "/usr/local/lib/{}" };
     for (auto& search_path : search_paths) {
         auto path = String::formatted(search_path, name);
@@ -496,6 +513,10 @@ static void read_environment_variables()
     for (char** env = s_envp; *env; ++env) {
         if (StringView { *env } == "_LOADER_BREAKPOINT=1"sv) {
             s_do_breakpoint_trap_before_entry = true;
+        }
+
+        if (StringView { *env }.starts_with("LD_LIBRARY_PATH"sv)) {
+            s_ld_library_path = *env + 16u;   // Point the path to just the part after the '='
         }
     }
 }
