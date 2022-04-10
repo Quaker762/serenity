@@ -46,23 +46,17 @@ extern "C" void thread_context_first_enter(void);
 extern "C" void exit_kernel_thread(void);
 extern "C" void do_assume_context(Thread* thread, u32 flags);
 
-struct [[gnu::aligned(16)]] FPUState
-{
-    u8 buffer[512];
-};
-
 class Processor;
 // Note: We only support 64 processors at most at the moment,
 // so allocate 64 slots of inline capacity in the container.
 using ProcessorContainer = Array<Processor*, 64>;
 
-class Processor {
+class x86Processor {
     friend class ProcessorInfo;
+    friend class Prcessor;
 
-    AK_MAKE_NONCOPYABLE(Processor);
-    AK_MAKE_NONMOVABLE(Processor);
-
-    Processor* m_self;
+    AK_MAKE_NONCOPYABLE(x86Processor);
+    AK_MAKE_NONMOVABLE(x86Processor);
 
 #if ARCH(X86_64)
     // Saved user stack for the syscall instruction.
@@ -73,31 +67,14 @@ class Processor {
     alignas(Descriptor) Descriptor m_gdt[256];
     u32 m_gdt_length;
 
-    u32 m_cpu;
-    FlatPtr m_in_irq;
-    volatile u32 m_in_critical;
-    static Atomic<u32> s_idle_cpu_mask;
-
     TSS m_tss;
     static FPUState s_clean_fpu_state;
     CPUFeature::Type m_features;
-    static Atomic<u32> g_total_processors;
-    u8 m_physical_address_bit_width;
-    u8 m_virtual_address_bit_width;
 #if ARCH(X86_64)
     bool m_has_qemu_hvf_quirk;
 #endif
 
     ProcessorInfo* m_info;
-    Thread* m_current_thread;
-    Thread* m_idle_thread;
-
-    Atomic<ProcessorMessageEntry*> m_message_queue;
-
-    bool m_invoke_scheduler_async;
-    bool m_scheduler_initialized;
-    bool m_in_scheduler;
-    Atomic<bool> m_halt_requested;
 
     DeferredCallEntry* m_pending_deferred_calls; // in reverse order
     DeferredCallEntry* m_free_deferred_call_pool_entry;
@@ -124,10 +101,16 @@ class Processor {
     DeferredCallEntry* deferred_call_get_free();
     void deferred_call_return_to_pool(DeferredCallEntry*);
     void deferred_call_queue_entry(DeferredCallEntry*);
+    ALWAYS_INLINE bool has_feature(CPUFeature::Type const& feature) const;
 
     void cpu_detect();
     void cpu_setup();
 
+public:
+    x86Processor() = default;
+
+    void initialize();
+/*
 public:
     Processor() = default;
 
@@ -429,6 +412,7 @@ public:
     static ErrorOr<Vector<FlatPtr, 32>> capture_stack_trace(Thread& thread, size_t max_frames = 0);
 
     static StringView platform_string();
+    */
 };
 
 }

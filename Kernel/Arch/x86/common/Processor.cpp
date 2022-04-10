@@ -25,6 +25,7 @@
 #include <Kernel/Arch/x86/InterruptDisabler.h>
 #include <Kernel/Arch/x86/Interrupts.h>
 #include <Kernel/Arch/x86/MSR.h>
+#include <Kernel/Arch/x86/Processor.h>
 #include <Kernel/Arch/x86/ProcessorInfo.h>
 #include <Kernel/Arch/x86/SafeMem.h>
 #include <Kernel/Arch/x86/TrapFrame.h>
@@ -34,7 +35,12 @@
 
 namespace Kernel {
 
-READONLY_AFTER_INIT FPUState Processor::s_clean_fpu_state;
+static x86Processor* get_impl(Processor& processor)
+{
+    return reinterpret_cast<x86Processor*>(processor.m_data);
+}
+
+READONLY_AFTER_INIT FPUState x86Processor::s_clean_fpu_state;
 
 READONLY_AFTER_INIT static ProcessorContainer s_processors {};
 READONLY_AFTER_INIT Atomic<u32> Processor::g_total_processors;
@@ -66,7 +72,7 @@ void exit_kernel_thread(void)
     Thread::current()->exit();
 }
 
-UNMAP_AFTER_INIT void Processor::cpu_detect()
+UNMAP_AFTER_INIT void x86Processor::cpu_detect()
 {
     // NOTE: This is called during Processor::early_initialize, we cannot
     //       safely log at this point because we don't have kmalloc
@@ -498,7 +504,7 @@ UNMAP_AFTER_INIT void Processor::cpu_detect()
     }
 }
 
-UNMAP_AFTER_INIT void Processor::cpu_setup()
+UNMAP_AFTER_INIT void x86Processor::cpu_setup()
 {
     // NOTE: This is called during Processor::early_initialize, we cannot
     //       safely log at this point because we don't have kmalloc
@@ -619,7 +625,7 @@ UNMAP_AFTER_INIT void Processor::early_initialize(u32 cpu)
     m_message_queue = nullptr;
     m_idle_thread = nullptr;
     m_current_thread = nullptr;
-    m_info = nullptr;
+    //m_info = nullptr;
 
     m_halt_requested = false;
     if (cpu == 0) {
@@ -629,10 +635,11 @@ UNMAP_AFTER_INIT void Processor::early_initialize(u32 cpu)
         g_total_processors.fetch_add(1u, AK::MemoryOrder::memory_order_acq_rel);
     }
 
-    deferred_call_pool_init();
+    auto* impl = get_impl(*this);
+    impl->deferred_call_pool_init();
 
-    cpu_setup();
-    gdt_init();
+    impl->cpu_setup();
+    impl->gdt_init();
 
     VERIFY(is_initialized());   // sanity check
     VERIFY(&current() == this); // sanity check
@@ -643,6 +650,7 @@ UNMAP_AFTER_INIT void Processor::initialize(u32 cpu)
     VERIFY(m_self == this);
     VERIFY(&current() == this); // sanity check
 
+    auto* m_impl = get_impl(*this);
     m_info = new ProcessorInfo(*this);
 
     dmesgln("CPU[{}]: Supported features: {}", current_id(), m_info->features_string());
@@ -720,7 +728,7 @@ UNMAP_AFTER_INIT void Processor::detect_hypervisor_hyperv(CPUID const& hyperviso
     // TODO: Actually do something with Hyper-V.
 }
 
-void Processor::write_raw_gdt_entry(u16 selector, u32 low, u32 high)
+void x86Processor::write_raw_gdt_entry(u16 selector, u32 low, u32 high)
 {
     u16 i = (selector & 0xfffc) >> 3;
     u32 prev_gdt_length = m_gdt_length;
@@ -740,18 +748,18 @@ void Processor::write_raw_gdt_entry(u16 selector, u32 low, u32 high)
     }
 }
 
-void Processor::write_gdt_entry(u16 selector, Descriptor& descriptor)
+void x86Processor::write_gdt_entry(u16 selector, Descriptor& descriptor)
 {
     write_raw_gdt_entry(selector, descriptor.low, descriptor.high);
 }
 
-Descriptor& Processor::get_gdt_entry(u16 selector)
+Descriptor& x86Processor::get_gdt_entry(u16 selector)
 {
     u16 i = (selector & 0xfffc) >> 3;
     return *(Descriptor*)(&m_gdt[i]);
 }
 
-void Processor::flush_gdt()
+void x86Processor::flush_gdt()
 {
     m_gdtr.address = m_gdt;
     m_gdtr.limit = (m_gdt_length * 8) - 1;
@@ -759,7 +767,7 @@ void Processor::flush_gdt()
                  : "memory");
 }
 
-DescriptorTablePointer const& Processor::get_gdtr()
+DescriptorTablePointer const& x86Processor::get_gdtr()
 {
     return m_gdtr;
 }
