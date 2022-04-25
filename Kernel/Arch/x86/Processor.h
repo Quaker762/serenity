@@ -46,9 +46,15 @@ extern "C" void thread_context_first_enter(void);
 extern "C" void exit_kernel_thread(void);
 extern "C" void do_assume_context(Thread* thread, u32 flags);
 
-struct [[gnu::aligned(16)]] FPUState
+struct [[gnu::aligned(64)]] FPUState
 {
     u8 buffer[512];
+    u8 xsave_header[64];    // TODO: This could be a struct in case we ever need to examine the header
+
+    // FIXME: This should be dynamically allocated! For now, we only save the `YMM` registers here,
+    // so this will do for now. The size of the area is queried via CPUID(EAX=0dh, ECX=2):EAX.
+    // https://www.intel.com/content/dam/develop/external/us/en/documents/36945
+    u8 ext_save_area[256];
 };
 
 class Processor;
