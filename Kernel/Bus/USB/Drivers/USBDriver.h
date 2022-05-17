@@ -12,6 +12,10 @@
 
 namespace Kernel::USB {
 
+typedef void (*driver_init_function_t)();
+#define USB_DEVICE_DRIVER(driver_name) \
+    driver_init_function_t driver_init_function_ptr_##driver_name __attribute__((section(".driver_init"), unused)) = &driver_name::init
+
 class Driver : public RefCounted<Driver> {
 public:
     Driver(StringView const& name)
