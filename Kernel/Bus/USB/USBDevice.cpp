@@ -13,6 +13,7 @@
 #include <Kernel/Bus/USB/USBRequest.h>
 #include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/DeviceInformation.h>
 #include <Kernel/StdLib.h>
+#include "USBManagement.h"
 
 namespace Kernel::USB {
 
@@ -23,6 +24,28 @@ ErrorOr<NonnullLockRefPtr<Device>> Device::try_create(USBController const& contr
     auto sysfs_node = TRY(SysFSUSBDeviceInformation::create(*device));
     device->m_sysfs_device_info_node = move(sysfs_node);
     TRY(device->enumerate_device());
+
+    // Attempt to find a driver for this device. If one is found, we call the driver's
+    // "probe" function, which initialises the local state for the device driver.
+    // It is currently the driver's responsibility to search the configuration/interface
+    // and take the appropriate action.
+    Driver::DeviceId this_device = { device->device_descriptor().vendor_id, device->device_descriptor().product_id };
+    for (auto& driver : USBManagement::the().available_drivers()) {
+        // Check each device supported by this driver
+        for (auto const& device_id : driver.device_table()) {
+            if (device_id == this_device) {
+                dbgln_if(USB_DEBUG, "Found driver {} for device {:04x}:{:04x}!", driver.name(), device->m_vendor_id, device->m_product_id);
+                for (auto const& configuration : device->configurations()) {
+                    for (auto const& interface : configuration.interfaces()) {
+                        auto result = driver.probe(interface);
+                        if (result.is_error())
+                            continue;
+                    }
+                }
+            }
+        }
+    }
+
     return device;
 }
 
