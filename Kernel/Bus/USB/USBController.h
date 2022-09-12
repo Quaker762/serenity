@@ -27,9 +27,14 @@ public:
     virtual ErrorOr<size_t> submit_bulk_transfer(Transfer& transfer) = 0;
 
     u8 allocate_address();
+    u8 bus_number() const;
+
+protected:
+    void assign_bus_number();
 
 private:
     u8 m_next_device_index { 1 };
+    u8 m_bus_number { 0u };
 
     IntrusiveListNode<USBController, NonnullLockRefPtr<USBController>> m_controller_list_node;
 

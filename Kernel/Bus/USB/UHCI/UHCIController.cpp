@@ -67,6 +67,12 @@ ErrorOr<NonnullLockRefPtr<UHCIController>> UHCIController::try_to_initialize(PCI
     // NOTE: This assumes that address is pointing to a valid UHCI controller.
     auto controller = TRY(adopt_nonnull_lock_ref_or_enomem(new (nothrow) UHCIController(pci_device_identifier)));
     TRY(controller->initialize());
+
+    // Assign a bus number to this controller if we're able to create it correctly
+    // Currently bus numbers are handed out in a linear fashion, however they should be grouped
+    // and assigned from lowest USB version to highest.
+    // See here for a good explanation: https://unix.stackexchange.com/questions/297178/how-usb-bus-number-and-device-number-been-assigned
+    controller->assign_bus_number();
     return controller;
 }
 
