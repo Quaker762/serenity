@@ -13,7 +13,7 @@
 #include <Kernel/Bus/USB/USBPipe.h>
 
 namespace Kernel {
-class SysFSUSBDeviceInformation;
+class SysFSUSBDeviceDirectory;
 }
 
 namespace Kernel::USB {
@@ -56,7 +56,7 @@ public:
 
     Vector<USBConfiguration> const& configurations() const { return m_configurations; }
 
-    SysFSUSBDeviceInformation& sysfs_device_info_node(Badge<USB::Hub>) { return *m_sysfs_device_info_node; }
+    SysFSUSBDeviceDirectory& sysfs_device_info_node(Badge<USB::Hub>) { return *m_sysfs_device_info_node; }
 
 protected:
     Device(NonnullLockRefPtr<USBController> controller, u8 address, u8 port, DeviceSpeed speed, NonnullOwnPtr<Pipe> default_pipe);
@@ -78,7 +78,7 @@ private:
     IntrusiveListNode<Device, NonnullLockRefPtr<Device>> m_hub_child_node;
 
 protected:
-    LockRefPtr<SysFSUSBDeviceInformation> m_sysfs_device_info_node;
+    LockRefPtr<SysFSUSBDeviceDirectory> m_sysfs_device_info_node;
 
 public:
     using List = IntrusiveList<&Device::m_hub_child_node>;

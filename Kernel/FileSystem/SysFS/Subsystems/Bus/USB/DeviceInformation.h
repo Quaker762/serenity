@@ -15,7 +15,7 @@
 namespace Kernel {
 
 class SysFSUSBDeviceInformation : public SysFSComponent {
-    friend class SysFSUSBBusDirectory;
+    friend class SysFSUSBDirectory;
 
 public:
     virtual ~SysFSUSBDeviceInformation() override;

@@ -9,7 +9,7 @@
 #include <Kernel/Bus/USB/USBController.h>
 #include <Kernel/Bus/USB/USBHub.h>
 #include <Kernel/Bus/USB/USBRequest.h>
-#include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/BusDirectory.h>
+#include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/Directory.h>
 #include <Kernel/StdLib.h>
 
 namespace Kernel::USB {
@@ -130,8 +130,8 @@ ErrorOr<void> Hub::set_port_feature(u8 port, HubFeatureSelector feature_selector
 
 void Hub::remove_children_from_sysfs()
 {
-    for (auto& child : m_children)
-        SysFSUSBBusDirectory::the().unplug({}, child.sysfs_device_info_node({}));
+    // for (auto& child : m_children)
+    // SysFSUSBDirectory::the().unplug({}, child.sysfs_device_info_node({}));
 }
 
 void Hub::check_for_port_updates()
@@ -257,10 +257,12 @@ void Hub::check_for_port_updates()
 
                     auto hub = hub_or_error.release_value();
                     m_children.append(hub);
-                    SysFSUSBBusDirectory::the().plug({}, hub->sysfs_device_info_node({}));
+                    dbgln("Fuck");
+                    controller().bus_sysfs_directory().plug(Badge<Hub> {}, hub->sysfs_device_info_node({}));
                 } else {
                     m_children.append(device);
-                    SysFSUSBBusDirectory::the().plug({}, device->sysfs_device_info_node({}));
+                    dbgln("Shit");
+                    controller().bus_sysfs_directory().plug(Badge<Hub> {}, device->sysfs_device_info_node({}));
                 }
 
             } else {
@@ -275,7 +277,7 @@ void Hub::check_for_port_updates()
                 }
 
                 if (device_to_remove) {
-                    SysFSUSBBusDirectory::the().unplug({}, device_to_remove->sysfs_device_info_node({}));
+                    // SysFSUSBDirectory::the().unplug({}, device_to_remove->sysfs_device_info_node({}));
                     if (device_to_remove->device_descriptor().device_class == USB_CLASS_HUB) {
                         auto* hub_child = static_cast<Hub*>(device_to_remove.ptr());
                         hub_child->remove_children_from_sysfs();

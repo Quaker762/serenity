@@ -1,48 +1,65 @@
 /*
- * Copyright (c) 2021, Liav A. <liavalb@hotmail.co.il>
+ * Copyright (c) 2022, Jesse Buhagiar <jesse.buhagiar@serenityos.org>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include <Kernel/FileSystem/SysFS/Registry.h>
+#include <Kernel/Bus/USB/USBController.h>
 #include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/BusDirectory.h>
-#include <Kernel/KBufferBuilder.h>
 
 namespace Kernel {
 
-static SysFSUSBBusDirectory* s_sysfs_usb_bus_directory;
+USB::USBController const& SysFSUSBBusDirectory::controller() const
+{
+    return *m_controller;
+}
 
-void SysFSUSBBusDirectory::plug(Badge<USB::Hub>, SysFSUSBDeviceInformation& new_device_info_node)
+void SysFSUSBBusDirectory::plug(Badge<USB::Device>, SysFSUSBDeviceDirectory& new_device_directory)
 {
     MUST(m_child_components.with([&](auto& list) -> ErrorOr<void> {
-        list.append(new_device_info_node);
+        list.append(new_device_directory);
+        auto pointed_component_base_name = MUST(KString::try_create(new_device_directory.name()));
+        auto pointed_component_relative_path = MUST(new_device_directory.relative_path(move(pointed_component_base_name), 0));
         return {};
     }));
 }
-void SysFSUSBBusDirectory::unplug(Badge<USB::Hub>, SysFSUSBDeviceInformation& removed_device_info_node)
+
+void SysFSUSBBusDirectory::unplug(Badge<USB::Device>, SysFSUSBDeviceDirectory& removed_device_directory)
 {
     MUST(m_child_components.with([&](auto& list) -> ErrorOr<void> {
-        list.remove(removed_device_info_node);
+        list.remove(removed_device_directory);
         return {};
     }));
 }
 
-SysFSUSBBusDirectory& SysFSUSBBusDirectory::the()
+void SysFSUSBBusDirectory::plug(Badge<USB::Hub>, SysFSUSBDeviceDirectory& new_device_directory)
 {
-    VERIFY(s_sysfs_usb_bus_directory);
-    return *s_sysfs_usb_bus_directory;
+    MUST(m_child_components.with([&](auto& list) -> ErrorOr<void> {
+        list.append(new_device_directory);
+        auto pointed_component_base_name = MUST(KString::try_create(new_device_directory.name()));
+        auto pointed_component_relative_path = MUST(new_device_directory.relative_path(move(pointed_component_base_name), 0));
+        return {};
+    }));
 }
 
-UNMAP_AFTER_INIT SysFSUSBBusDirectory::SysFSUSBBusDirectory(SysFSBusDirectory& buses_directory)
-    : SysFSDirectory(buses_directory)
+void SysFSUSBBusDirectory::unplug(Badge<USB::Hub>, SysFSUSBDeviceDirectory& removed_device_directory)
 {
+    MUST(m_child_components.with([&](auto& list) -> ErrorOr<void> {
+        list.remove(removed_device_directory);
+        return {};
+    }));
 }
 
-UNMAP_AFTER_INIT void SysFSUSBBusDirectory::initialize()
+UNMAP_AFTER_INIT NonnullLockRefPtr<SysFSUSBBusDirectory> SysFSUSBBusDirectory::create(SysFSDirectory const& parent_directory, USB::USBController const& controller)
 {
-    auto directory = adopt_lock_ref(*new SysFSUSBBusDirectory(SysFSComponentRegistry::the().buses_directory()));
-    SysFSComponentRegistry::the().register_new_bus_directory(directory);
-    s_sysfs_usb_bus_directory = directory;
+    auto bus_directory_name = MUST(KString::formatted("usb{}", controller.bus_number()));
+    return adopt_lock_ref(*new (nothrow) SysFSUSBBusDirectory(move(bus_directory_name), parent_directory, controller));
 }
 
+UNMAP_AFTER_INIT SysFSUSBBusDirectory::SysFSUSBBusDirectory(NonnullOwnPtr<KString> device_directory_name, SysFSDirectory const& parent_directory, USB::USBController const& controller)
+    : SysFSDirectory(parent_directory)
+    , m_controller(controller)
+    , m_device_directory_name(move(device_directory_name))
+{
+}
 }

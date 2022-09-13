@@ -73,6 +73,7 @@ ErrorOr<NonnullLockRefPtr<UHCIController>> UHCIController::try_to_initialize(PCI
     // and assigned from lowest USB version to highest.
     // See here for a good explanation: https://unix.stackexchange.com/questions/297178/how-usb-bus-number-and-device-number-been-assigned
     controller->assign_bus_number();
+    controller->create_sysfs_directory_for_bus();
     return controller;
 }
 

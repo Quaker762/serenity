@@ -10,6 +10,7 @@
 #include <AK/Error.h>
 #include <Kernel/Bus/USB/USBDevice.h>
 #include <Kernel/Bus/USB/USBTransfer.h>
+#include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/BusDirectory.h>
 
 namespace Kernel::USB {
 
@@ -29,8 +30,13 @@ public:
     u8 allocate_address();
     u8 bus_number() const;
 
+    SysFSUSBBusDirectory& bus_sysfs_directory() const;
+
 protected:
     void assign_bus_number();
+    void create_sysfs_directory_for_bus();
+
+    mutable LockRefPtr<SysFSUSBBusDirectory> m_sysfs_bus_directory;
 
 private:
     u8 m_next_device_index { 1 };

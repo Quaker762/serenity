@@ -11,16 +11,17 @@
 #include <Kernel/Bus/USB/USBDescriptors.h>
 #include <Kernel/Bus/USB/USBDevice.h>
 #include <Kernel/Bus/USB/USBRequest.h>
-#include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/DeviceInformation.h>
+#include <Kernel/FileSystem/SysFS/Subsystems/Bus/USB/DeviceDirectory.h>
 #include <Kernel/StdLib.h>
 
 namespace Kernel::USB {
 
 ErrorOr<NonnullLockRefPtr<Device>> Device::try_create(USBController const& controller, u8 port, DeviceSpeed speed)
 {
+    ;
     auto pipe = TRY(Pipe::try_create_pipe(controller, Pipe::Type::Control, Pipe::Direction::Bidirectional, 0, 8, 0));
     auto device = TRY(adopt_nonnull_lock_ref_or_enomem(new (nothrow) Device(controller, port, speed, move(pipe))));
-    auto sysfs_node = TRY(SysFSUSBDeviceInformation::create(*device));
+    auto sysfs_node = TRY(SysFSUSBDeviceDirectory::create(device->controller().bus_sysfs_directory(), *device));
     device->m_sysfs_device_info_node = move(sysfs_node);
     TRY(device->enumerate_device());
     return device;
