@@ -481,6 +481,7 @@ else()
         Arch/aarch64/vector_table.S
 
         # Files from base Kernel
+        Credentials.cpp
         CommandLine.cpp
         KBufferBuilder.cpp
         KString.cpp
