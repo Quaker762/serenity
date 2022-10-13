@@ -486,7 +486,9 @@ else()
         KString.cpp
         KSyms.cpp
         MiniStdLib.cpp
+        StdLib.cpp
         UBSanitizer.cpp
+        UserOrKernelBuffer.cpp
 
         Devices/DeviceManagement.cpp
 
