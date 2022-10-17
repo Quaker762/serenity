@@ -11,7 +11,11 @@
 #include <AK/Time.h>
 #include <Kernel/Arch/InterruptDisabler.h>
 #include <Kernel/Arch/SmapDisabler.h>
+#if !ARCH(AARCH64)
 #include <Kernel/Arch/x86/TrapFrame.h>
+#else
+#include <Kernel/Arch/aarch64/TrapFrame.h>
+#endif
 #include <Kernel/Debug.h>
 #include <Kernel/Devices/KCOVDevice.h>
 #include <Kernel/FileSystem/OpenFileDescription.h>
@@ -101,11 +105,14 @@ Thread::Thread(NonnullLockRefPtr<Process> process, NonnullOwnPtr<Memory::Region>
         m_regs.cs = GDT_SELECTOR_CODE0;
     else
         m_regs.cs = GDT_SELECTOR_CODE3 | 3;
+#elif ARCH(AARCH64)
 #else
 #    error Unknown architecture
 #endif
 
+#if ARCH(I386) || ARCH(X86_64)
     m_regs.cr3 = m_process->address_space().with([](auto& space) { return space->page_directory().cr3(); });
+#endif
 
     m_kernel_stack_base = m_kernel_stack_region->vaddr().get();
     m_kernel_stack_top = m_kernel_stack_region->vaddr().offset(default_kernel_stack_size).get() & ~(FlatPtr)0x7u;
@@ -1076,7 +1083,11 @@ DispatchSignalResult Thread::dispatch_signal(u8 signal)
             },
             .uc_mcontext = {},
         };
+
+        // FIXME: Gunar, re-enable me when you fix libc, please!
+#if !ARCH(AARCH64)
         copy_kernel_registers_into_ptrace_registers(static_cast<PtraceRegisters&>(ucontext.uc_mcontext), state);
+#endif
 
         auto fill_signal_info_for_signal = [&](siginfo& signal_info) {
             if (signal == SIGCHLD) {
@@ -1149,7 +1160,7 @@ DispatchSignalResult Thread::dispatch_signal(u8 signal)
         if (action.flags & SA_SIGINFO)
             fill_signal_info_for_signal(signal_info);
 
-#if ARCH(I386)
+#if ARCH(I386) || ARCH(AARCH64)
         constexpr static FlatPtr thread_red_zone_size = 0;
 #elif ARCH(X86_64)
         constexpr static FlatPtr thread_red_zone_size = 128;
@@ -1306,7 +1317,9 @@ void Thread::set_state(State new_state, u8 stop_signal)
 
     if (m_state == Thread::State::Runnable) {
         Scheduler::enqueue_runnable_thread(*this);
+#if ARCH(I386) || ARCH(X86_64)
         Processor::smp_wake_n_idle_processors(1);
+#endif
     } else if (m_state == Thread::State::Stopped) {
         // We don't want to restore to Running state, only Runnable!
         m_stop_state = previous_state != Thread::State::Running ? previous_state : Thread::State::Runnable;
@@ -1446,7 +1459,9 @@ LockRefPtr<Thread> Thread::from_tid(ThreadID tid)
 
 void Thread::reset_fpu_state()
 {
+#if ARCH(I386) || ARCH(X86_64)
     memcpy(&m_fpu_state, &Processor::clean_fpu_state(), sizeof(FPUState));
+#endif
 }
 
 bool Thread::should_be_stopped() const

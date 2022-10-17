@@ -36,21 +36,6 @@ void get_fast_random_bytes(Bytes)
 
 }
 
-// Mutex
-namespace Kernel {
-
-void Mutex::lock(Mode, [[maybe_unused]] LockLocation const& location)
-{
-    VERIFY_NOT_REACHED();
-}
-
-void Mutex::unlock()
-{
-    VERIFY_NOT_REACHED();
-}
-
-}
-
 // Process
 namespace Kernel {
 

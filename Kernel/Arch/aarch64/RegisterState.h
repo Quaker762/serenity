@@ -11,6 +11,8 @@ namespace Kernel {
 struct RegisterState {
     FlatPtr userspace_sp() const { return 0; }
     FlatPtr ip() const { return 0; }
+    void set_userspace_sp(FlatPtr value [[maybe_unused]]){}
+    void set_ip(FlatPtr value [[maybe_unused]]){}
 };
 
 struct DebugRegisterState {

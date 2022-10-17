@@ -9,6 +9,7 @@
 #include <Kernel/Arch/Processor.h>
 #include <Kernel/Arch/aarch64/ASM_wrapper.h>
 #include <Kernel/Arch/aarch64/CPU.h>
+#include <Kernel/Arch/InterruptDisabler.h>
 
 extern "C" uintptr_t vector_table_el1;
 
@@ -30,6 +31,12 @@ void Processor::initialize(u32 cpu)
     Aarch64::Asm::el1_vector_table_install(&vector_table_el1);
 
     g_current_processor = this;
+}
+
+u32 Processor::clear_critical()
+{
+    auto prev_critical = in_critical();
+    return prev_critical;
 }
 
 [[noreturn]] void Processor::halt()

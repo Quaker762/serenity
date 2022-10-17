@@ -7,17 +7,21 @@
 #pragma once
 
 #include <AK/Types.h>
-
 #include <AK/Platform.h>
+#include <Kernel/Arch/RegisterState.h>
 
 namespace Kernel {
 
 struct TrapFrame {
+    // FIXME: Move these into RegisterState.h!
     u64 x[31];     // Saved general purpose registers
     u64 spsr_el1;  // Save Processor Status Register, EL1
     u64 elr_el1;   // Exception Link Register, EL1
     u64 tpidr_el1; // EL0 thread ID
     u64 sp_el0;    // EL0 stack pointer
+
+    TrapFrame* next_trap;
+    RegisterState* regs; // must be last
 };
 
 }

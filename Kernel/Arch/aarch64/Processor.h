@@ -10,6 +10,7 @@
 #include <AK/Concepts.h>
 #include <AK/Function.h>
 #include <AK/Types.h>
+#include <AK/Vector.h>
 
 #include <Kernel/Arch/ProcessorSpecificDataID.h>
 #include <Kernel/Arch/aarch64/Registers.h>
@@ -88,7 +89,7 @@ public:
     // FIXME: Actually return the current thread once aarch64 supports threading.
     ALWAYS_INLINE static Thread* current_thread()
     {
-        return nullptr;
+        return m_current_thread;
     }
 
     ALWAYS_INLINE bool has_nx() const
@@ -147,6 +148,14 @@ public:
         return current().m_in_critical;
     }
 
+    static u32 clear_critical();
+
+    ALWAYS_INLINE static void restore_critical(u32 prev_critical)
+    {
+        auto& current_processor = current();
+        current_processor.m_in_critical = prev_critical;
+    }
+
     // FIXME: Actually return the idle thread once aarch64 supports threading.
     ALWAYS_INLINE static Thread* idle_thread()
     {
@@ -163,10 +172,16 @@ public:
         VERIFY_NOT_REACHED();
     }
 
+    static ErrorOr<Vector<FlatPtr, 32>> capture_stack_trace(Thread&, size_t = 0)
+    {
+        return {ESUCCESS};
+    }
+
     [[noreturn]] static void halt();
 
 private:
     u32 m_in_critical { 0 };
+    static Thread* m_current_thread;
 };
 
 }

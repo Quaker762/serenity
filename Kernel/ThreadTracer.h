@@ -10,7 +10,11 @@
 #include <AK/OwnPtr.h>
 #include <Kernel/Arch/RegisterState.h>
 #include <Kernel/Forward.h>
+#if ARCH(I386)
 #include <LibC/sys/arch/i386/regs.h>
+#elif ARCH(AARCH64)
+#include <LibC/sys/arch/aarch64/regs.h>
+#endif
 
 namespace Kernel {
 

@@ -487,15 +487,25 @@ else()
         KString.cpp
         KSyms.cpp
         MiniStdLib.cpp
+        Process.cpp
+        ProcessExposed.cpp
+        ProcessGroup.cpp
         StdLib.cpp
+        Thread.cpp
         UBSanitizer.cpp
         UserOrKernelBuffer.cpp
 
         Devices/DeviceManagement.cpp
 
+        FileSystem/Custody.cpp
+        FileSystem/OpenFileDescription.cpp
+        FileSystem/ProcFS.cpp
+        FileSystem/VirtualFileSystem.cpp
+
         Graphics/Console/BootFramebufferConsole.cpp
         Graphics/Console/GenericFramebufferConsole.cpp
 
+        Locking/Mutex.cpp
         Locking/Spinlock.cpp
 
         Memory/AddressSpace.cpp
