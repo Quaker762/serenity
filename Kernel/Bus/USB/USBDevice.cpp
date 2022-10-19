@@ -157,9 +157,9 @@ ErrorOr<void> Device::enumerate_device()
             dbgln("Maximum Power: {}mA", configuration_descriptor.max_power_in_ma * 2u); // This value is in 2mA steps
         }
 
-        USBConfiguration device_configuration(*this, configuration_descriptor);
-        TRY(device_configuration.enumerate_interfaces());
-        m_configurations.append(device_configuration);
+        // USBConfiguration device_configuration(*this, configuration_descriptor);
+        // TRY(device_configuration.enumerate_interfaces());
+        // m_configurations.append(device_configuration);
     }
 
     return {};

@@ -6,10 +6,11 @@
 
 #pragma once
 
-#include <Kernel/Bus/USB/USBDescriptors.h>
 #include <Kernel/Bus/USB/USBPipe.h>
 
 namespace Kernel::USB {
+
+class Device;
 
 //
 // An endpoint is the "end point" of communication of a USB device. That is, data is read from and written
@@ -42,6 +43,8 @@ public:
     static constexpr u8 ENDPOINT_ATTRIBUTES_ISO_MODE_SYNC_TYPE = 0x0c;
     static constexpr u8 ENDPOINT_ATTRIBUTES_ISO_MODE_USAGE_TYPE = 0x30;
 
+    static ErrorOr<NonnullOwnPtr<USBEndpoint>> create(USB::Device const& device, USBEndpointDescriptor const& descriptor);
+
     USBEndpointDescriptor const& descriptor() const { return m_descriptor; }
 
     bool is_control() const { return (m_descriptor.endpoint_attributes_bitmap & ENDPOINT_ATTRIBUTES_TRANSFER_TYPE_MASK) == ENDPOINT_ATTRIBUTES_TRANSFER_TYPE_CONTROL; }
@@ -52,11 +55,14 @@ public:
     u16 max_packet_size() const { return m_descriptor.max_packet_size; }
     u8 polling_interval() const { return m_descriptor.poll_interval_in_frames; }
 
+    ErrorOr<size_t> write(size_t count, u8 const* const data);
+    ErrorOr<size_t> read(size_t count, u8* const data);
+
 private:
-    USBEndpoint(/* TODO */);
+    USBEndpoint(NonnullOwnPtr<USB::Pipe> pipe, Kernel::USB::USBEndpointDescriptor const& descriptor);
     USBEndpointDescriptor m_descriptor;
 
-    Pipe m_pipe;
+    OwnPtr<USB::Pipe> m_pipe;
 };
 
 }

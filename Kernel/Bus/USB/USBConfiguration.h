@@ -6,14 +6,15 @@
 
 #pragma once
 
+#include <AK/NonnullOwnPtrVector.h>
 #include <AK/Vector.h>
 #include <Kernel/Bus/USB/USBDescriptors.h>
-#include <Kernel/Bus/USB/USBDevice.h>
 #include <Kernel/Bus/USB/USBInterface.h>
 
 namespace Kernel::USB {
 
 class Device;
+class USBInterface;
 
 class USBConfiguration {
 public:
@@ -33,14 +34,14 @@ public:
     u8 attributes() const { return m_descriptor.attributes_bitmap; }
     u16 max_power_ma() const { return m_descriptor.max_power_in_ma * 2u; } // Note: "Power" is used incorrectly here, however it's what it's called in the descriptor/documentation
 
-    Vector<USBInterface> const& interfaces() const { return m_interfaces; }
+    NonnullOwnPtrVector<USBInterface> const& interfaces() const { return m_interfaces; }
 
     ErrorOr<void> enumerate_interfaces();
 
 private:
-    Device& m_device;                              // Reference to the device linked to this configuration
-    USBConfigurationDescriptor const m_descriptor; // Descriptor that backs this configuration
-    Vector<USBInterface> m_interfaces;             // Interfaces for this device
+    Device& m_device;                               // Reference to the device linked to this configuration
+    USBConfigurationDescriptor const m_descriptor;  // Descriptor that backs this configuration
+    NonnullOwnPtrVector<USBInterface> m_interfaces; // Interfaces for this device
 };
 
 }

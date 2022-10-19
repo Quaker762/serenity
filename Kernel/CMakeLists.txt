@@ -31,7 +31,9 @@ set(KERNEL_SOURCES
     Bus/USB/USBConfiguration.cpp
     Bus/USB/USBController.cpp
     Bus/USB/USBDevice.cpp
+    Bus/USB/USBEndpoint.cpp
     Bus/USB/USBHub.cpp
+    Bus/USB/USBInterface.cpp
     Bus/USB/USBManagement.cpp
     Bus/USB/USBPipe.cpp
     Bus/USB/USBTransfer.cpp
@@ -546,12 +548,102 @@ set(SOURCES
     ${KERNEL_SOURCES}
     ${GENERATED_SOURCES}
     ${AK_SOURCES}
-    ${EDID_SOURCES}
-    ${ELF_SOURCES}
-    ${VT_SOURCES}
-    ${CRYPTO_SOURCES}
-    ${PARTITION_SOURCES}
-)
+    )
+if (NOT "${SERENITY_ARCH}" STREQUAL "aarch64")
+    set(SOURCES
+        ${KERNEL_SOURCES}
+        ${GENERATED_SOURCES}
+        ${SOURCES}
+        ${EDID_SOURCES}
+        ${ELF_SOURCES}
+        ${VT_SOURCES}
+        ${CRYPTO_SOURCES}
+        ${PARTITION_SOURCES}
+    )
+else()
+    set(RPI_SOURCES
+        Arch/aarch64/RPi/DebugOutput.cpp
+        Arch/aarch64/RPi/Framebuffer.cpp
+        Arch/aarch64/RPi/GPIO.cpp
+        Arch/aarch64/RPi/InterruptController.cpp
+        Arch/aarch64/RPi/Mailbox.cpp
+        Arch/aarch64/RPi/MMIO.cpp
+        Arch/aarch64/RPi/Timer.cpp
+        Arch/aarch64/RPi/UART.cpp
+    )
+    set(SOURCES
+        ${AK_SOURCES}
+        ${RPI_SOURCES}
+
+        Arch/Processor.cpp
+
+        Arch/aarch64/boot.S
+        Arch/aarch64/BootPPMParser.cpp
+        Arch/aarch64/CrashHandler.cpp
+        Arch/aarch64/CurrentTime.cpp
+        Arch/aarch64/Dummy.cpp
+        Arch/aarch64/Exceptions.cpp
+        Arch/aarch64/init.cpp
+        Arch/aarch64/InterruptManagement.cpp
+        Arch/aarch64/Interrupts.cpp
+        Arch/aarch64/kprintf.cpp
+        Arch/aarch64/MainIdRegister.cpp
+        Arch/aarch64/MMU.cpp
+        Arch/aarch64/PageDirectory.cpp
+        Arch/aarch64/Panic.cpp
+        Arch/aarch64/Processor.cpp
+        Arch/aarch64/SafeMem.cpp
+        Arch/aarch64/ScopedCritical.cpp
+        Arch/aarch64/SmapDisabler.cpp
+        Arch/aarch64/vector_table.S
+
+        # Files from base Kernel
+        CommandLine.cpp
+        KString.cpp
+        KSyms.cpp
+        MiniStdLib.cpp
+        StdLib.cpp
+        Time/TimeManagement.cpp
+        TimerQueue.cpp
+        UBSanitizer.cpp
+        UserOrKernelBuffer.cpp
+
+        Devices/DeviceManagement.cpp
+
+        Graphics/Console/BootFramebufferConsole.cpp
+        Graphics/Console/GenericFramebufferConsole.cpp
+
+        Locking/Spinlock.cpp
+
+        Memory/AddressSpace.cpp
+        Memory/AnonymousVMObject.cpp
+        Memory/InodeVMObject.cpp
+        Memory/MemoryManager.cpp
+        Memory/PageDirectory.cpp
+        Memory/PhysicalPage.cpp
+        Memory/PhysicalRegion.cpp
+        Memory/PhysicalZone.cpp
+        Memory/PrivateInodeVMObject.cpp
+        Memory/Region.cpp
+        Memory/RegionTree.cpp
+        Memory/RingBuffer.cpp
+        Memory/ScatterGatherList.cpp
+        Memory/SharedInodeVMObject.cpp
+        Memory/VirtualRange.cpp
+        Memory/VMObject.cpp
+
+        Interrupts/GenericInterruptHandler.cpp
+        Interrupts/IRQHandler.cpp
+        Interrupts/SharedIRQHandler.cpp
+        Interrupts/UnhandledInterruptHandler.cpp
+            Bus/USB/USBEndpoint.cpp Bus/USB/USBInterface.cpp)
+
+    # Otherwise linker errors e.g undefined reference to `__aarch64_cas8_acq_rel'
+    add_compile_options(-mno-outline-atomics -latomic)
+
+    # FIXME: Remove this once compiling MemoryManager.cpp doesn't give the nonnull error anymore.
+    add_compile_options(-Wno-nonnull)
+endif()
 
 add_compile_options(-fsigned-char)
 add_compile_options(-Wno-unknown-warning-option -Wvla -Wnull-dereference)

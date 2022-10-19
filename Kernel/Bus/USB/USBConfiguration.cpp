@@ -66,8 +66,12 @@ ErrorOr<void> USBConfiguration::enumerate_interfaces()
             endpoint_descriptors.append(endpoint_descriptor);
         }
 
-        USBInterface device_interface(*this, *interface_descriptor, endpoint_descriptors);
-        m_interfaces.append(device_interface);
+        auto device_interface = adopt_nonnull_own_or_enomem(new USBInterface(*this, *interface_descriptor, endpoint_descriptors));
+        if (device_interface.is_error()) {
+            dbgln("USBConfiguration: Failed to allocate device interface!");
+            return device_interface.release_error();
+        }
+        m_interfaces.append(device_interface.release_value());
         interface_descriptor += interface_descriptor->number_of_endpoints * sizeof(USBEndpointDescriptor);
     }
 
